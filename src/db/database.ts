@@ -148,88 +148,70 @@ export async function executeAccountTransfer(
 }
 
 /**
- * Redistribute funds from one purpose category to another.
- * Inherits source tags except the origin purpose. Fund total unchanged.
+ * Redistribute funds from one purpose to another, per selected account slice.
+ * Each transfer: { accountDvId, amount } moves `amount` from the
+ * (sourcePurposeId + accountDvId) slice to the (targetPurposeId + accountDvId) slice.
+ * Fund total is unchanged (net zero).
  */
 export async function executePurposeTransfer(
   db: SQLiteDatabase,
   sourcePurposeId: number,
   targetPurposeId: number,
-  amount: number
+  transfers: Array<{ accountDvId: number; amount: number }>
 ): Promise<void> {
   await db.withTransactionAsync(async () => {
-    let remaining = amount;
+    for (const { accountDvId, amount } of transfers) {
+      if (amount <= 0) continue;
 
-    const sources = await db.getAllAsync<{ id: number; amount: number }>(
-      `SELECT s.id, s.amount FROM allocation_slices s
-       JOIN slice_dimensions sd ON sd.slice_id = s.id AND sd.dimension_value_id = ?
-       WHERE s.fund_id = ?
-       ORDER BY s.amount DESC`,
-      [sourcePurposeId, FUND_ID]
-    );
-
-    for (const source of sources) {
-      if (remaining <= 0) break;
-      const take = Math.min(source.amount, remaining);
-
-      const accountRow = await db.getFirstAsync<{ dvId: number }>(
-        `SELECT sd.dimension_value_id AS dvId
-         FROM slice_dimensions sd
-         JOIN dimension_values dv ON dv.id = sd.dimension_value_id
-         WHERE sd.slice_id = ? AND dv.dimension_id = 1
-         LIMIT 1`,
-        [source.id]
+      // Find source slice (sourcePurpose + account)
+      const source = await db.getFirstAsync<{ id: number; amount: number }>(
+        `SELECT s.id, s.amount FROM allocation_slices s
+         JOIN slice_dimensions sd1 ON sd1.slice_id = s.id AND sd1.dimension_value_id = ?
+         JOIN slice_dimensions sd2 ON sd2.slice_id = s.id AND sd2.dimension_value_id = ?
+         WHERE s.fund_id = ? LIMIT 1`,
+        [sourcePurposeId, accountDvId, FUND_ID]
       );
+      if (!source || amount > source.amount) continue;
 
-      if (accountRow) {
-        const target = await db.getFirstAsync<{ id: number }>(
-          `SELECT s.id FROM allocation_slices s
-           JOIN slice_dimensions sd1 ON sd1.slice_id = s.id AND sd1.dimension_value_id = ?
-           JOIN slice_dimensions sd2 ON sd2.slice_id = s.id AND sd2.dimension_value_id = ?
-           WHERE s.fund_id = ? LIMIT 1`,
-          [accountRow.dvId, targetPurposeId, FUND_ID]
-        );
-
-        if (target) {
-          await db.runAsync(
-            'UPDATE allocation_slices SET amount = amount + ? WHERE id = ?',
-            [take, target.id]
-          );
-        } else {
-          // Inherit all tags from source except sourcePurposeId, add targetPurposeId
-          const otherTags = await db.getAllAsync<{ dimension_value_id: number }>(
-            `SELECT dimension_value_id FROM slice_dimensions
-             WHERE slice_id = ? AND dimension_value_id != ?`,
-            [source.id, sourcePurposeId]
-          );
-          const result = await db.runAsync(
-            'INSERT INTO allocation_slices (fund_id, amount) VALUES (?, ?)',
-            [FUND_ID, take]
-          );
-          const newSliceId = result.lastInsertRowId;
-          for (const tag of otherTags) {
-            await db.runAsync(
-              'INSERT OR IGNORE INTO slice_dimensions (slice_id, dimension_value_id) VALUES (?, ?)',
-              [newSliceId, tag.dimension_value_id]
-            );
-          }
-          await db.runAsync(
-            'INSERT OR IGNORE INTO slice_dimensions (slice_id, dimension_value_id) VALUES (?, ?)',
-            [newSliceId, targetPurposeId]
-          );
-        }
-      }
-
-      if (take === source.amount) {
+      // Reduce / delete source slice
+      if (amount === source.amount) {
         await db.runAsync('DELETE FROM allocation_slices WHERE id = ?', [source.id]);
       } else {
         await db.runAsync(
-          'UPDATE allocation_slices SET amount = amount + ? WHERE id = ?',
-          [-take, source.id]
+          'UPDATE allocation_slices SET amount = amount - ? WHERE id = ?',
+          [amount, source.id]
         );
       }
-      remaining -= take;
+
+      // Grow / create target slice (targetPurpose + account)
+      const target = await db.getFirstAsync<{ id: number }>(
+        `SELECT s.id FROM allocation_slices s
+         JOIN slice_dimensions sd1 ON sd1.slice_id = s.id AND sd1.dimension_value_id = ?
+         JOIN slice_dimensions sd2 ON sd2.slice_id = s.id AND sd2.dimension_value_id = ?
+         WHERE s.fund_id = ? LIMIT 1`,
+        [targetPurposeId, accountDvId, FUND_ID]
+      );
+      if (target) {
+        await db.runAsync(
+          'UPDATE allocation_slices SET amount = amount + ? WHERE id = ?',
+          [amount, target.id]
+        );
+      } else {
+        const result = await db.runAsync(
+          'INSERT INTO allocation_slices (fund_id, amount) VALUES (?, ?)',
+          [FUND_ID, amount]
+        );
+        const sliceId = result.lastInsertRowId;
+        await db.runAsync(
+          'INSERT OR IGNORE INTO slice_dimensions (slice_id, dimension_value_id) VALUES (?, ?)',
+          [sliceId, targetPurposeId]
+        );
+        await db.runAsync(
+          'INSERT OR IGNORE INTO slice_dimensions (slice_id, dimension_value_id) VALUES (?, ?)',
+          [sliceId, accountDvId]
+        );
+      }
     }
-    // Fund total unchanged for purpose transfer
+    // Fund total unchanged (net zero)
   });
 }

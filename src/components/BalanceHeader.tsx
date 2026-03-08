@@ -17,7 +17,8 @@ export function BalanceHeader() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1a1a2e',
-    paddingVertical: 20,
+    paddingTop: 48,
+    paddingBottom: 20,
     paddingHorizontal: 16,
     alignItems: 'center',
   },

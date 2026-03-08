@@ -22,17 +22,27 @@ export function RebalanceModalContent() {
   const closeModal = useAppStore((s) => s.closeModal);
   const loadState = useAppStore((s) => s.loadState);
   const showToast = useAppStore((s) => s.showToast);
-  const invalidateSliceCache = useAppStore((s) => s.invalidateSliceCache);
+  const accounts = useAppStore((s) => s.accounts);
 
-  const dvId = modal.payload?.dvId ?? 0;
-  const label = modal.payload?.label ?? '';
-  const currentTotal = modal.payload?.currentTotal ?? 0;
-  const modalMode = modal.payload?.mode ?? 'rebalance'; // 'rebalance' | 'deposit' | 'spend'
+  // modal.type is the source of truth for mode
+  const modalMode = modal.type as 'rebalance' | 'deposit' | 'spend';
 
-  // For deposit/spend, we collect amount first then derive newTotal
+  // Rebalance: dvId/label/currentTotal come from payload (set by DimensionRow)
+  // Deposit/Spend: account is selected in the amount phase
+  const payloadDvId = modal.payload?.dvId ?? 0;
+  const payloadLabel = modal.payload?.label ?? '';
+  const payloadCurrentTotal = modal.payload?.currentTotal ?? 0;
+
+  const [selectedAccountId, setSelectedAccountId] = useState<number>(
+    accounts[0]?.id ?? 0
+  );
+
+  const dvId = modalMode === 'rebalance' ? payloadDvId : selectedAccountId;
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+
   const [amountStr, setAmountStr] = useState('');
   const [newTotalStr, setNewTotalStr] = useState(
-    modalMode === 'rebalance' ? (currentTotal / 100).toFixed(2) : ''
+    modalMode === 'rebalance' ? (payloadCurrentTotal / 100).toFixed(2) : ''
   );
   const [candidates, setCandidates] = useState<{
     delta: number;
@@ -47,10 +57,10 @@ export function RebalanceModalContent() {
   );
 
   const fetchCandidates = useCallback(
-    async (nt: number) => {
+    async (accountId: number, nt: number) => {
       setLoading(true);
       try {
-        const data = await getRebalanceCandidates(db, dvId, nt);
+        const data = await getRebalanceCandidates(db, accountId, nt);
         setCandidates(data);
         const defaultMode: PurposeMode = data.delta < 0 ? '-' : '+';
         setRows(
@@ -62,14 +72,14 @@ export function RebalanceModalContent() {
         setLoading(false);
       }
     },
-    [db, dvId, showToast]
+    [db, showToast]
   );
 
   // Load grid immediately for rebalance mode
   useEffect(() => {
     if (modalMode === 'rebalance') {
       const nt = parseDollars(newTotalStr);
-      if (nt !== null) fetchCandidates(nt);
+      if (nt !== null) fetchCandidates(payloadDvId, nt);
     }
   }, []);
 
@@ -80,7 +90,7 @@ export function RebalanceModalContent() {
       setCandidates((prev) =>
         prev ? { ...prev, delta: cents - prev.currentTotal, newTotal: cents } : prev
       );
-      const delta = cents - currentTotal;
+      const delta = cents - payloadCurrentTotal;
       const defaultMode: PurposeMode = delta < 0 ? '-' : '+';
       setRows((prev) => prev.map((r) => ({ ...r, mode: defaultMode, value: '' })));
     }
@@ -89,11 +99,13 @@ export function RebalanceModalContent() {
   const handleContinue = async () => {
     const amountCents = parseDollars(amountStr);
     if (!amountCents || amountCents <= 0) return showToast('Enter a valid amount');
-    if (modalMode === 'spend' && amountCents > currentTotal) {
-      return showToast(`Cannot spend more than ${fmt(currentTotal)}`);
+    const acct = accounts.find((a) => a.id === selectedAccountId);
+    if (!acct) return showToast('Select an account');
+    if (modalMode === 'spend' && amountCents > acct.total) {
+      return showToast(`Cannot spend more than ${fmt(acct.total)}`);
     }
-    const nt = modalMode === 'deposit' ? currentTotal + amountCents : currentTotal - amountCents;
-    await fetchCandidates(nt);
+    const nt = modalMode === 'deposit' ? acct.total + amountCents : acct.total - amountCents;
+    await fetchCandidates(selectedAccountId, nt);
     setPhase('grid');
   };
 
@@ -119,7 +131,6 @@ export function RebalanceModalContent() {
 
     if (transfers.length === 0 && delta !== 0) return showToast('No allocations entered');
 
-    // Validate: reductions must not exceed available
     for (const t of transfers.filter((t) => t.portion < 0)) {
       const row = rows.find((r) => r.purpose.id === t.purposeId);
       if (row && -t.portion > row.purpose.currentInAccount) {
@@ -131,7 +142,6 @@ export function RebalanceModalContent() {
 
     try {
       await executeAccountRebalance(db, dvId, transfers);
-      invalidateSliceCache();
       closeModal();
       await loadState(db);
     } catch (e: any) {
@@ -139,23 +149,33 @@ export function RebalanceModalContent() {
     }
   };
 
-  const modeTitle =
-    modalMode === 'deposit'
-      ? `Deposit → ${label}`
-      : modalMode === 'spend'
-      ? `Spend ← ${label}`
-      : `Rebalance: ${label}`;
-
-  // Phase 1: amount entry for deposit/spend
+  // Phase 1: account + delta entry for deposit/spend
   if (phase === 'amount') {
     return (
       <View>
-        <View style={styles.infoBox}>
+        <Text style={styles.fieldLabel}>Account</Text>
+        <ScrollView style={styles.accountList} nestedScrollEnabled>
+          {accounts.map((a) => (
+            <TouchableOpacity
+              key={a.id}
+              style={[styles.accountItem, selectedAccountId === a.id && styles.accountItemSelected]}
+              onPress={() => setSelectedAccountId(a.id)}
+            >
+              <Text style={[styles.accountItemText, selectedAccountId === a.id && styles.accountItemTextSelected]}>
+                {a.label}
+              </Text>
+              <Text style={styles.accountItemAmount}>{fmt(a.total)}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <View style={[styles.infoBox, { marginTop: 12 }]}>
           <Text style={styles.infoText}>
-            Current total: <Text style={styles.bold}>{fmt(currentTotal)}</Text>
+            Current total: <Text style={styles.bold}>{fmt(selectedAccount?.total ?? 0)}</Text>
           </Text>
         </View>
-        <Text style={styles.fieldLabel}>Amount ($)</Text>
+        <Text style={styles.fieldLabel}>
+          {modalMode === 'deposit' ? 'Amount to deposit ($)' : 'Amount to spend ($)'}
+        </Text>
         <TextInput
           style={styles.input}
           keyboardType="decimal-pad"
@@ -169,8 +189,15 @@ export function RebalanceModalContent() {
           <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryBtn} onPress={handleContinue}>
-            <Text style={styles.primaryText}>Continue →</Text>
+          <TouchableOpacity
+            style={[styles.primaryBtn, loading && styles.disabledBtn]}
+            onPress={handleContinue}
+            disabled={loading}
+          >
+            {loading
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.primaryText}>Continue →</Text>
+            }
           </TouchableOpacity>
         </View>
       </View>
@@ -178,13 +205,14 @@ export function RebalanceModalContent() {
   }
 
   // Phase 2: purpose grid
+  const confirmDisabled = remainder !== 0 || loading || !candidates;
   return (
     <View style={styles.gridContainer}>
       {modalMode === 'rebalance' && (
         <>
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              Current total: <Text style={styles.bold}>{fmt(currentTotal)}</Text>
+              Current total: <Text style={styles.bold}>{fmt(payloadCurrentTotal)}</Text>
             </Text>
           </View>
           <Text style={styles.fieldLabel}>New total ($)</Text>
@@ -229,9 +257,9 @@ export function RebalanceModalContent() {
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.primaryBtn, remainder !== 0 && styles.disabledBtn]}
+          style={[styles.primaryBtn, confirmDisabled && styles.disabledBtn]}
           onPress={handleConfirm}
-          disabled={remainder !== 0 || loading}
+          disabled={confirmDisabled}
         >
           <Text style={styles.primaryText}>Confirm</Text>
         </TouchableOpacity>
@@ -267,6 +295,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     marginBottom: 12,
   },
+  accountList: {
+    maxHeight: 120,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 6,
+    backgroundColor: '#f8fafc',
+  },
+  accountItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  accountItemSelected: { backgroundColor: '#dbeafe' },
+  accountItemText: { fontSize: 14, color: '#1e293b' },
+  accountItemTextSelected: { color: '#1d4ed8', fontWeight: '600' },
+  accountItemAmount: { fontSize: 14, color: '#64748b' },
   loadingContainer: {
     paddingVertical: 20,
     alignItems: 'center',

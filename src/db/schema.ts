@@ -53,5 +53,5 @@ INSERT OR IGNORE INTO dimensions (id, name, is_balancing, allows_multiple) VALUE
     (2, 'Purpose',  1, 0),
     (3, 'Notes',    0, 1);
 
-INSERT OR IGNORE INTO funds (id, name, total_amount) VALUES (1, 'My Fund', 0);
+INSERT OR IGNORE INTO funds (id, name, total_amount) VALUES (1, 'Total Amount', 0);
 `;

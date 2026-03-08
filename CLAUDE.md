@@ -83,7 +83,7 @@ slice_dimensions      -- slice_id → dimension_value_id  (junction, UNIQUE pair
 2. **syncFundTotal** — must be called after any slice mutation. Recalculates `funds.total_amount` as `SUM(allocation_slices.amount)`.
 3. **Rebalance validation** — `portionSum === delta` must hold before calling `executeAccountRebalance`. The UI enforces this by disabling Confirm until remainder === 0.
 4. **Account delete** — deletes all slices tagged with that account first, then the dimension_value, then calls syncFundTotal.
-5. **Purpose transfer** — fund total is unchanged. Only re-tags slices from one purpose to another, inheriting all other tags from the source.
+5. **Purpose transfer** — fund total is unchanged. Re-tags specific account slices from one purpose to another on a per-account basis.
 
 ## Transaction Functions
 
@@ -96,9 +96,9 @@ slice_dimensions      -- slice_id → dimension_value_id  (junction, UNIQUE pair
 - Portions always positive; shrinks source, grows target
 - Net-zero fund operation; `syncFundTotal` called for accuracy
 
-### `executePurposeTransfer(db, sourcePurposeId, targetPurposeId, amount)`
-- Drains source slices largest-first
-- Creates target slices inheriting all tags except sourcePurposeId, adds targetPurposeId
+### `executePurposeTransfer(db, sourcePurposeId, targetPurposeId, transfers)`
+- Each `transfer = { accountDvId, amount }` — moves `amount` from `(sourcePurpose + account)` slice to `(targetPurpose + account)` slice
+- User explicitly selects which account slices to re-tag (shown in a grid after purpose selection)
 - Does NOT call syncFundTotal (net zero)
 
 ## Modal System
@@ -107,7 +107,8 @@ Single `AppModal` component reads `modal.type` from Zustand and renders the corr
 - `'none'` → not visible
 - `'add'` → AddModalContent (payload: `{ type: 'account' | 'purpose' }`)
 - `'edit'` → EditModalContent (payload: `{ type, dvId, label }`)
-- `'rebalance'` / `'deposit'` / `'spend'` → RebalanceModalContent (payload: `{ dvId, label, currentTotal, mode }`)
+- `'rebalance'` → RebalanceModalContent (payload: `{ dvId, label, currentTotal }`) — opens directly to purpose grid with new-total input
+- `'deposit'` / `'spend'` → RebalanceModalContent (no payload required) — phase 1: pick account + enter delta; phase 2: purpose distribution grid
 - `'accountTransfer'` → AccountTransferModalContent
 - `'purposeTransfer'` → PurposeTransferModalContent
 
@@ -130,3 +131,6 @@ Single `AppModal` component reads `modal.type` from Zustand and renders the corr
 - **Foreign keys** — `PRAGMA foreign_keys = ON` is run as a separate `execAsync` call in `initializeDatabase` before the DDL. SQLite ignores this PRAGMA when set inside an implicit transaction, so it must not be bundled with the schema SQL.
 - **UNIQUE constraint** on `(dimension_id, label)` in `dimension_values` — catch SQLite error in catch block and show toast if message includes 'UNIQUE'.
 - **ErrorBoundary** — `App.tsx` wraps `<Suspense>` in a class-based `ErrorBoundary`. Without it, any error thrown during DB initialization crashes the React tree silently and the native splash screen never dismisses.
+- **Slice cache refresh** — `loadState` re-fetches slices for all currently expanded rows as part of its state update. Do NOT call `invalidateSliceCache()` before `loadState` in modal confirm handlers — doing so causes a spinner flash. Let `loadState` own the full refresh.
+- **`modal.type` as mode source** — `RebalanceModalContent` reads `modal.type` (not `modal.payload.mode`) to determine rebalance/deposit/spend mode. `modal.payload.mode` was removed.
+- **Re-tag modal** — `PurposeTransferModalContent` is 2-phase: select source/target purposes → account slice grid. `executePurposeTransfer` now takes per-account transfers, not a single drain amount.

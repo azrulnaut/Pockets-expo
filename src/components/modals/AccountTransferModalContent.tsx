@@ -20,7 +20,6 @@ export function AccountTransferModalContent() {
   const closeModal = useAppStore((s) => s.closeModal);
   const loadState = useAppStore((s) => s.loadState);
   const showToast = useAppStore((s) => s.showToast);
-  const invalidateSliceCache = useAppStore((s) => s.invalidateSliceCache);
   const accounts = useAppStore((s) => s.accounts);
 
   const [sourceId, setSourceId] = useState(accounts[0]?.id ?? 0);
@@ -73,7 +72,6 @@ export function AccountTransferModalContent() {
 
     try {
       await executeAccountTransfer(db, sourceId, targetId, transfers);
-      invalidateSliceCache();
       closeModal();
       await loadState(db);
     } catch (e: any) {

@@ -11,8 +11,6 @@ export function EditModalContent() {
   const closeModal = useAppStore((s) => s.closeModal);
   const loadState = useAppStore((s) => s.loadState);
   const showToast = useAppStore((s) => s.showToast);
-  const invalidateSliceCache = useAppStore((s) => s.invalidateSliceCache);
-
   const type = modal.payload?.type ?? 'account';
   const dvId = modal.payload?.dvId ?? 0;
   const currentLabel = modal.payload?.label ?? '';
@@ -26,7 +24,6 @@ export function EditModalContent() {
     if (!trimmed) return showToast('Name is required');
     try {
       await renameDimensionValue(db, dvId, dimId, trimmed);
-      invalidateSliceCache();
       closeModal();
       await loadState(db);
     } catch (e: any) {
@@ -46,7 +43,6 @@ export function EditModalContent() {
           onPress: async () => {
             try {
               await deleteDimensionValue(db, dvId, dimId);
-              invalidateSliceCache();
               closeModal();
               await loadState(db);
             } catch (e: any) {

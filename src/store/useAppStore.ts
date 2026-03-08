@@ -49,7 +49,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadState: async (db) => {
     try {
       const data = await getState(db);
-      set({ fund: data.fund, accounts: data.accounts, purposes: data.purposes });
+      const { expandedAccounts, expandedPurposes } = get();
+
+      // Refresh slice cache for all currently expanded rows in-place (no spinner)
+      const sliceCache: Record<string, SliceRow[]> = {};
+      for (const dvId of expandedAccounts) {
+        sliceCache[`a-${dvId}`] = await getSlicesForDimensionValue(db, dvId, DIM_PURPOSE);
+      }
+      for (const dvId of expandedPurposes) {
+        sliceCache[`p-${dvId}`] = await getSlicesForDimensionValue(db, dvId, DIM_ACCOUNTS);
+      }
+
+      set({ fund: data.fund, accounts: data.accounts, purposes: data.purposes, sliceCache });
     } catch (e: any) {
       get().showToast('Failed to load state: ' + e.message);
     }
