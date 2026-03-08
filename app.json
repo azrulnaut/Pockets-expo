@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "pockets-tmp",
-    "slug": "pockets-tmp",
+    "name": "Pockets",
+    "slug": "pockets-expo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,6 +15,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.azrulnaut.pockets",
+      "minSdkVersion": 24,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,6 +27,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-sqlite"
+    ]
   }
 }
