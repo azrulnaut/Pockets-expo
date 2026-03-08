@@ -1,7 +1,5 @@
 // SQLite schema verbatim from sql/schema.sql in azrulnaut/Pockets-project
 export const SCHEMA_SQL = `
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS funds (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT    NOT NULL,

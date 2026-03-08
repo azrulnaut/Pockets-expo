@@ -25,6 +25,8 @@ npx expo start --android  # Start with Android emulator
 eas build --platform android  # Production build
 ```
 
+> **Emulator connectivity**: If the emulator shows the Expo Go splash but never loads the bundle, run `adb reverse tcp:8081 tcp:8081` then reopen via `adb shell am start -a android.intent.action.VIEW -d "exp://localhost:8081" host.exp.exponent`. Metro uses the LAN IP by default which Android emulators can't always reach.
+
 ## Project Structure
 
 ```
@@ -125,5 +127,6 @@ Single `AppModal` component reads `modal.type` from Zustand and renders the corr
 - **No nested transactions** — `withTransactionAsync` cannot be nested. Keep all db calls in a single flat async block.
 - **Async-only db calls** — expo-sqlite v15 is fully async. Never call db methods without `await`.
 - **Safe area insets** — `Taskbar` uses `useSafeAreaInsets()` to add bottom padding above the system navigation bar.
-- **Foreign keys** — enabled in schema via `PRAGMA foreign_keys = ON`. Deleting a dimension_value that has slices tagged to it will fail unless those slices are deleted first.
+- **Foreign keys** — `PRAGMA foreign_keys = ON` is run as a separate `execAsync` call in `initializeDatabase` before the DDL. SQLite ignores this PRAGMA when set inside an implicit transaction, so it must not be bundled with the schema SQL.
 - **UNIQUE constraint** on `(dimension_id, label)` in `dimension_values` — catch SQLite error in catch block and show toast if message includes 'UNIQUE'.
+- **ErrorBoundary** — `App.tsx` wraps `<Suspense>` in a class-based `ErrorBoundary`. Without it, any error thrown during DB initialization crashes the React tree silently and the native splash screen never dismisses.

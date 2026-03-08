@@ -5,6 +5,8 @@ import type { Transfer } from '../types';
 import { FUND_ID } from '../constants';
 
 export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
+  // Run PRAGMA separately so it takes effect on the connection before DDL
+  await db.execAsync('PRAGMA foreign_keys = ON;');
   await db.execAsync(SCHEMA_SQL);
 }
 
