@@ -42,7 +42,8 @@ src/
     queries.ts                  ← getState, getDimensionTotals, getSlicesForDimensionValue,
                                    getRebalanceCandidates, createDimensionValue,
                                    renameDimensionValue, deleteDimensionValue,
-                                   getAccountTotal, getPurposeTotal, syncFundTotal
+                                   getAccountTotal, getPurposeTotal, syncFundTotal,
+                                   setTargetAmount
   store/
     useAppStore.ts              ← Zustand store (AppState + UIState + ModalState slices)
   screens/
@@ -66,7 +67,7 @@ src/
       PurposeTransferModalContent.tsx  ← Re-tag between purposes
 ```
 
-## Database Schema (5 tables)
+## Database Schema (6 tables)
 
 ```sql
 funds                 -- id, name, total_amount (kept in sync), currency
@@ -75,6 +76,7 @@ dimensions            -- id, name, is_balancing, allows_multiple
 dimension_values      -- id, dimension_id, label  (UNIQUE per dimension)
 allocation_slices     -- id, fund_id, amount (INTEGER cents), note
 slice_dimensions      -- slice_id → dimension_value_id  (junction, UNIQUE pair)
+purpose_targets       -- dimension_value_id (FK → dimension_values, CASCADE), target_amount (INTEGER cents, UNIQUE per dv)
 ```
 
 ## Key Business Rules
@@ -106,7 +108,7 @@ slice_dimensions      -- slice_id → dimension_value_id  (junction, UNIQUE pair
 Single `AppModal` component reads `modal.type` from Zustand and renders the correct content:
 - `'none'` → not visible
 - `'add'` → AddModalContent (payload: `{ type: 'account' | 'purpose' }`)
-- `'edit'` → EditModalContent (payload: `{ type, dvId, label }`)
+- `'edit'` → EditModalContent (payload: `{ type, dvId, label, targetAmount? }`)
 - `'rebalance'` → RebalanceModalContent (payload: `{ dvId, label, currentTotal }`) — opens directly to purpose grid with new-total input
 - `'deposit'` / `'spend'` → RebalanceModalContent (no payload required) — phase 1: pick account + enter delta; phase 2: purpose distribution grid
 - `'accountTransfer'` → AccountTransferModalContent
@@ -134,3 +136,4 @@ Single `AppModal` component reads `modal.type` from Zustand and renders the corr
 - **Slice cache refresh** — `loadState` re-fetches slices for all currently expanded rows as part of its state update. Do NOT call `invalidateSliceCache()` before `loadState` in modal confirm handlers — doing so causes a spinner flash. Let `loadState` own the full refresh.
 - **`modal.type` as mode source** — `RebalanceModalContent` reads `modal.type` (not `modal.payload.mode`) to determine rebalance/deposit/spend mode. `modal.payload.mode` was removed.
 - **Re-tag modal** — `PurposeTransferModalContent` is 2-phase: select source/target purposes → account slice grid. `executePurposeTransfer` now takes per-account transfers, not a single drain amount.
+- **Purpose targets** — `purpose_targets` table stores optional target amounts for purposes. `getDimensionTotals` LEFT JOINs this table, so `DimensionValue.targetAmount` is always present (0 = no target). `setTargetAmount(db, dvId, cents)` uses INSERT OR REPLACE for `> 0` and DELETE for `0`. `ON DELETE CASCADE` ensures rows are removed when the purpose is deleted — no manual cleanup needed. The `purpose_targets` table is added via `CREATE TABLE IF NOT EXISTS` so existing installs gain it on next launch without a migration.

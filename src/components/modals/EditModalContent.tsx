@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useAppStore } from '../../store/useAppStore';
-import { renameDimensionValue, deleteDimensionValue } from '../../db/queries';
+import { renameDimensionValue, deleteDimensionValue, setTargetAmount } from '../../db/queries';
 import { DIM_ACCOUNTS, DIM_PURPOSE } from '../../constants';
+import { parseDollars } from '../../utils/format';
 
 export function EditModalContent() {
   const db = useSQLiteContext();
@@ -14,16 +15,24 @@ export function EditModalContent() {
   const type = modal.payload?.type ?? 'account';
   const dvId = modal.payload?.dvId ?? 0;
   const currentLabel = modal.payload?.label ?? '';
+  const currentTargetAmount = modal.payload?.targetAmount ?? 0;
   const dimId = type === 'account' ? DIM_ACCOUNTS : DIM_PURPOSE;
   const typeName = type === 'account' ? 'Account' : 'Purpose';
 
   const [label, setLabel] = useState(currentLabel);
+  const [targetAmountStr, setTargetAmountStr] = useState(
+    currentTargetAmount > 0 ? (currentTargetAmount / 100).toFixed(2) : ''
+  );
 
   const handleSave = async () => {
     const trimmed = label.trim();
     if (!trimmed) return showToast('Name is required');
     try {
       await renameDimensionValue(db, dvId, dimId, trimmed);
+      if (type === 'purpose') {
+        const cents = parseDollars(targetAmountStr) ?? 0;
+        await setTargetAmount(db, dvId, cents);
+      }
       closeModal();
       await loadState(db);
     } catch (e: any) {
@@ -66,6 +75,19 @@ export function EditModalContent() {
         onSubmitEditing={handleSave}
         returnKeyType="done"
       />
+      {type === 'purpose' && (
+        <>
+          <Text style={styles.label}>Target Amount</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0.00 (optional)"
+            value={targetAmountStr}
+            onChangeText={setTargetAmountStr}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+          />
+        </>
+      )}
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
           <Text style={styles.deleteText}>Delete {typeName}</Text>

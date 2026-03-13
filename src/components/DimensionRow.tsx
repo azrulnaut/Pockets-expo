@@ -29,7 +29,7 @@ export function DimensionRow({ item, type }: Props) {
   };
 
   const handleGear = () => {
-    openModal({ type: 'edit', payload: { type, dvId: item.id, label: item.label } });
+    openModal({ type: 'edit', payload: { type, dvId: item.id, label: item.label, targetAmount: item.targetAmount } });
   };
 
   const handleAction = () => {
@@ -46,7 +46,19 @@ export function DimensionRow({ item, type }: Props) {
       <TouchableOpacity style={styles.row} onPress={handlePress} activeOpacity={0.7}>
         <Text style={styles.toggle}>{isExpanded ? '▼' : '▶'}</Text>
         <Text style={styles.label} numberOfLines={1}>{item.label}</Text>
-        <Text style={styles.amount}>{fmt(item.total)}</Text>
+        {type === 'purpose' && item.targetAmount && item.targetAmount > 0 ? (
+          <>
+            <Text style={styles.amount}>{fmt(item.total)}</Text>
+            <Text style={styles.separator}> / </Text>
+            <Text style={[styles.target, {
+              color: item.total >= item.targetAmount ? '#16a34a' : '#94a3b8'
+            }]}>
+              {fmt(item.targetAmount)}
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.amount}>{fmt(item.total)}</Text>
+        )}
         {type === 'account' && (
           <TouchableOpacity style={styles.actionBtn} onPress={handleAction}>
             <Text style={styles.actionBtnText}>Update</Text>
@@ -102,6 +114,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#1e293b',
+    marginRight: 8,
+  },
+  separator: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  target: {
+    fontSize: 15,
+    fontWeight: '600',
     marginRight: 8,
   },
   actionBtn: {

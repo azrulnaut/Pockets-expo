@@ -8,6 +8,7 @@ export interface DimensionValue {
   id: number;
   label: string;
   total: number;
+  targetAmount?: number;
 }
 
 export interface SliceRow {
@@ -45,6 +46,7 @@ export interface ModalPayload {
   label?: string;
   currentTotal?: number;
   mode?: 'deposit' | 'spend' | 'rebalance';
+  targetAmount?: number;
 }
 
 export interface ModalConfig {

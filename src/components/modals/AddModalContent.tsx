@@ -2,8 +2,9 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useAppStore } from '../../store/useAppStore';
-import { createDimensionValue } from '../../db/queries';
+import { createDimensionValue, setTargetAmount } from '../../db/queries';
 import { DIM_ACCOUNTS, DIM_PURPOSE } from '../../constants';
+import { parseDollars } from '../../utils/format';
 
 export function AddModalContent() {
   const db = useSQLiteContext();
@@ -13,6 +14,7 @@ export function AddModalContent() {
   const showToast = useAppStore((s) => s.showToast);
 
   const [label, setLabel] = useState('');
+  const [targetAmountStr, setTargetAmountStr] = useState('');
   const inputRef = useRef<TextInput>(null);
 
   const type = modal.payload?.type ?? 'account';
@@ -23,7 +25,11 @@ export function AddModalContent() {
     const trimmed = label.trim();
     if (!trimmed) return showToast('Name is required');
     try {
-      await createDimensionValue(db, dimId, trimmed);
+      const newDvId = await createDimensionValue(db, dimId, trimmed);
+      if (type === 'purpose') {
+        const cents = parseDollars(targetAmountStr) ?? 0;
+        if (cents > 0) await setTargetAmount(db, newDvId, cents);
+      }
       closeModal();
       await loadState(db);
     } catch (e: any) {
@@ -44,6 +50,19 @@ export function AddModalContent() {
         onSubmitEditing={handleSubmit}
         returnKeyType="done"
       />
+      {type === 'purpose' && (
+        <>
+          <Text style={styles.label}>Target Amount</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0.00 (optional)"
+            value={targetAmountStr}
+            onChangeText={setTargetAmountStr}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+          />
+        </>
+      )}
       <View style={styles.actions}>
         <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
           <Text style={styles.cancelText}>Cancel</Text>

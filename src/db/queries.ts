@@ -19,15 +19,36 @@ export async function getDimensionTotals(
   dimId: number
 ): Promise<DimensionValue[]> {
   return db.getAllAsync<DimensionValue>(
-    `SELECT dv.id, dv.label, COALESCE(SUM(s.amount), 0) AS total
+    `SELECT dv.id, dv.label,
+            COALESCE(SUM(s.amount), 0) AS total,
+            COALESCE(pt.target_amount, 0) AS targetAmount
      FROM dimension_values dv
      LEFT JOIN slice_dimensions sd ON sd.dimension_value_id = dv.id
-     LEFT JOIN allocation_slices s ON s.id = sd.slice_id AND s.fund_id = ?
+     LEFT JOIN allocation_slices s  ON s.id = sd.slice_id AND s.fund_id = ?
+     LEFT JOIN purpose_targets pt   ON pt.dimension_value_id = dv.id
      WHERE dv.dimension_id = ?
-     GROUP BY dv.id, dv.label
+     GROUP BY dv.id, dv.label, pt.target_amount
      ORDER BY dv.label`,
     [FUND_ID, dimId]
   );
+}
+
+export async function setTargetAmount(
+  db: SQLiteDatabase,
+  dvId: number,
+  targetAmount: number
+): Promise<void> {
+  if (targetAmount > 0) {
+    await db.runAsync(
+      'INSERT OR REPLACE INTO purpose_targets (dimension_value_id, target_amount) VALUES (?, ?)',
+      [dvId, targetAmount]
+    );
+  } else {
+    await db.runAsync(
+      'DELETE FROM purpose_targets WHERE dimension_value_id = ?',
+      [dvId]
+    );
+  }
 }
 
 export async function getSlicesForDimensionValue(

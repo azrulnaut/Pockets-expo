@@ -54,4 +54,11 @@ INSERT OR IGNORE INTO dimensions (id, name, is_balancing, allows_multiple) VALUE
     (3, 'Notes',    0, 1);
 
 INSERT OR IGNORE INTO funds (id, name, total_amount) VALUES (1, 'Total Amount', 0);
+
+CREATE TABLE IF NOT EXISTS purpose_targets (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    dimension_value_id INTEGER NOT NULL REFERENCES dimension_values(id) ON DELETE CASCADE,
+    target_amount      INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (dimension_value_id)
+);
 `;
