@@ -54,13 +54,13 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: '#1a1a2e',
-    paddingTop: 10,
+    paddingTop: 15,
     paddingHorizontal: 8,
   },
   btn: {
     flex: 1,
     marginHorizontal: 4,
-    paddingVertical: 10,
+    paddingVertical: 15,
     backgroundColor: '#2d2d4e',
     borderRadius: 6,
     alignItems: 'center',

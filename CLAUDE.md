@@ -62,7 +62,7 @@ src/
       AddModalContent.tsx       ← Add account/purpose form
       EditModalContent.tsx      ← Rename + delete with Alert.alert confirmation
       RebalanceModalContent.tsx ← Handles rebalance, deposit, and spend modes
-      PurposeGrid.tsx           ← Purpose rows with +/- toggle and amount inputs
+      PurposeGrid.tsx           ← Purpose rows with MAX button, +/- toggle, and amount inputs
       AccountTransferModalContent.tsx  ← Transfer between accounts
       PurposeTransferModalContent.tsx  ← Re-tag between purposes
 ```
@@ -136,4 +136,5 @@ Single `AppModal` component reads `modal.type` from Zustand and renders the corr
 - **Slice cache refresh** — `loadState` re-fetches slices for all currently expanded rows as part of its state update. Do NOT call `invalidateSliceCache()` before `loadState` in modal confirm handlers — doing so causes a spinner flash. Let `loadState` own the full refresh.
 - **`modal.type` as mode source** — `RebalanceModalContent` reads `modal.type` (not `modal.payload.mode`) to determine rebalance/deposit/spend mode. `modal.payload.mode` was removed.
 - **Re-tag modal** — `PurposeTransferModalContent` is 2-phase: select source/target purposes → account slice grid. `executePurposeTransfer` now takes per-account transfers, not a single drain amount.
+- **MAX button in PurposeGrid** — each row has a MAX button that fills the row with the entire remaining delta and sets the mode to match the sign of the remainder. Disabled (greyed) when `remainder === 0`. `onMaxPress` handler lives in `RebalanceModalContent` and is passed as a prop.
 - **Purpose targets** — `purpose_targets` table stores optional target amounts for purposes. `getDimensionTotals` LEFT JOINs this table, so `DimensionValue.targetAmount` is always present (0 = no target). `setTargetAmount(db, dvId, cents)` uses INSERT OR REPLACE for `> 0` and DELETE for `0`. `ON DELETE CASCADE` ensures rows are removed when the purpose is deleted — no manual cleanup needed. The `purpose_targets` table is added via `CREATE TABLE IF NOT EXISTS` so existing installs gain it on next launch without a migration.

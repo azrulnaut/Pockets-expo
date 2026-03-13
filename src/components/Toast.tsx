@@ -1,38 +1,53 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Modal, Text, View, StyleSheet } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
 
 export function Toast() {
   const toastMessage = useAppStore((s) => s.toastMessage);
   const opacity = useRef(new Animated.Value(0)).current;
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     if (toastMessage) {
+      setModalVisible(true);
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
         Animated.delay(2800),
         Animated.timing(opacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-      ]).start();
+      ]).start(() => {
+        setModalVisible(false);
+      });
     } else {
       opacity.setValue(0);
+      setModalVisible(false);
     }
   }, [toastMessage]);
 
-  if (!toastMessage) return null;
-
   return (
-    <Animated.View style={[styles.container, { opacity }]} pointerEvents="none">
-      <Text style={styles.text}>{toastMessage}</Text>
-    </Animated.View>
+    <Modal
+      visible={modalVisible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={() => {}}
+    >
+      <View pointerEvents="none" style={styles.overlay}>
+        <Animated.View style={[styles.toast, { opacity }]}>
+          <Text style={styles.text}>{toastMessage}</Text>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 100,
-    left: 20,
-    right: 20,
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toast: {
+    maxWidth: '80%',
     backgroundColor: '#1e293b',
     borderRadius: 8,
     paddingVertical: 12,

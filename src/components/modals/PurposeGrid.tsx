@@ -15,6 +15,7 @@ interface Props {
   rows: PurposeRowState[];
   onChangeValue: (purposeId: number, value: string) => void;
   onChangeMode: (purposeId: number, mode: PurposeMode) => void;
+  onMaxPress: (purposeId: number) => void;
   showModeButtons: boolean;
   remainder: number;
   remainderLabel: string;
@@ -24,6 +25,7 @@ export function PurposeGrid({
   rows,
   onChangeValue,
   onChangeMode,
+  onMaxPress,
   showModeButtons,
   remainder,
   remainderLabel,
@@ -46,6 +48,13 @@ export function PurposeGrid({
             <Text style={styles.purposeLabel} numberOfLines={1}>{purpose.label}</Text>
             <Text style={styles.purposeCurrent}>{fmt(purpose.currentInAccount)}</Text>
           </View>
+          <TouchableOpacity
+            style={[styles.maxBtn, isZero && styles.maxBtnDisabled]}
+            onPress={() => onMaxPress(purpose.id)}
+            disabled={isZero}
+          >
+            <Text style={[styles.maxBtnText, isZero && styles.maxBtnTextDisabled]}>MAX</Text>
+          </TouchableOpacity>
           {showModeButtons && (
             <View style={styles.modeBtns}>
               <TouchableOpacity
@@ -115,6 +124,28 @@ const styles = StyleSheet.create({
   purposeCurrent: {
     fontSize: 11,
     color: '#64748b',
+  },
+  maxBtn: {
+    height: 28,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#d97706',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+    backgroundColor: '#ffffff',
+  },
+  maxBtnDisabled: {
+    borderColor: '#cbd5e1',
+  },
+  maxBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#d97706',
+  },
+  maxBtnTextDisabled: {
+    color: '#cbd5e1',
   },
   modeBtns: {
     flexDirection: 'row',

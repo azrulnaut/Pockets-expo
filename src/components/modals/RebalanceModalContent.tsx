@@ -117,6 +117,14 @@ export function RebalanceModalContent() {
   const delta = candidates?.delta ?? 0;
   const remainder = delta - portionSum;
 
+  const handleMax = (id: number) => {
+    const absVal = (Math.abs(remainder) / 100).toFixed(2);
+    const mode: PurposeMode = remainder >= 0 ? '+' : '-';
+    setRows((prev) =>
+      prev.map((r) => (r.purpose.id === id ? { ...r, value: absVal, mode } : r))
+    );
+  };
+
   const handleConfirm = async () => {
     if (!candidates) return;
     if (remainder !== 0) return showToast('Remaining must be zero before confirming');
@@ -247,6 +255,7 @@ export function RebalanceModalContent() {
           onChangeMode={(id, mode) =>
             setRows((prev) => prev.map((r) => (r.purpose.id === id ? { ...r, mode } : r)))
           }
+          onMaxPress={handleMax}
           showModeButtons={true}
           remainder={remainder}
           remainderLabel="Remaining to commit"
