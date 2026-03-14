@@ -28,7 +28,7 @@ export async function getDimensionTotals(
      LEFT JOIN purpose_targets pt   ON pt.dimension_value_id = dv.id
      WHERE dv.dimension_id = ?
      GROUP BY dv.id, dv.label, pt.target_amount
-     ORDER BY dv.label`,
+     ORDER BY dv.id`,
     [FUND_ID, dimId]
   );
 }
