@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { DimensionValue } from '../types';
 import { useAppStore } from '../store/useAppStore';
@@ -44,7 +45,7 @@ export function DimensionRow({ item, type }: Props) {
   return (
     <>
       <TouchableOpacity style={styles.row} onPress={handlePress} activeOpacity={0.7}>
-        <Text style={styles.toggle}>{isExpanded ? '▼' : '▶'}</Text>
+        <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={12} color="#94a3b8" style={{ marginRight: 8, width: 14 }} />
         <Text style={styles.label} numberOfLines={1}>{item.label}</Text>
         {type === 'purpose' && item.targetAmount && item.targetAmount > 0 ? (
           <>
@@ -65,7 +66,7 @@ export function DimensionRow({ item, type }: Props) {
           </TouchableOpacity>
         )}
         <TouchableOpacity style={styles.gearBtn} onPress={handleGear}>
-          <Text style={styles.gearText}>⚙</Text>
+          <Ionicons name="settings-outline" size={16} color="#94a3b8" />
         </TouchableOpacity>
       </TouchableOpacity>
 
@@ -97,12 +98,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
-  },
-  toggle: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginRight: 8,
-    width: 14,
   },
   label: {
     flex: 1,
@@ -140,10 +135,6 @@ const styles = StyleSheet.create({
   },
   gearBtn: {
     padding: 4,
-  },
-  gearText: {
-    fontSize: 16,
-    color: '#94a3b8',
   },
   loadingRow: {
     paddingVertical: 12,
