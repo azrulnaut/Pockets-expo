@@ -16,6 +16,7 @@ Multi-dimensional financial allocation tracking. Money is stored as **allocation
 | State | Zustand v5 |
 | Navigation | None — single screen, manual tab state |
 | Safe area | react-native-safe-area-context |
+| Icons | @expo/vector-icons (Ionicons) |
 
 ## Dev Commands
 
@@ -50,12 +51,12 @@ src/
     MainScreen.tsx              ← Single screen, assembles all components
   components/
     BalanceHeader.tsx           ← Fund name + total (dark header)
-    TabBar.tsx                  ← Accounts | Purposes tab switcher
+    TabBar.tsx                  ← Accounts | Purposes tab switcher (wallet-outline / cube-outline icons)
     AddBar.tsx                  ← "+ Add" button
     DimensionList.tsx           ← Renders account or purpose list
-    DimensionRow.tsx            ← Expandable row with gear + action button
+    DimensionRow.tsx            ← Expandable row with Ionicons gear (settings-outline) + chevron toggle
     SliceSubRow.tsx             ← Indented slice breakdown row
-    Taskbar.tsx                 ← Deposit | Transfer | Spend | Re-tag (bottom bar)
+    Taskbar.tsx                 ← 3 icon buttons (Account, Re-tag, Settings); Account opens animated sub-menu (Deposit/Spend/Transfer)
     Toast.tsx                   ← Animated fade notification overlay
     AppModal.tsx                ← Single Modal shell (bottom sheet style)
     modals/
@@ -137,5 +138,6 @@ Single `AppModal` component reads `modal.type` from Zustand and renders the corr
 - **`modal.type` as mode source** — `RebalanceModalContent` reads `modal.type` (not `modal.payload.mode`) to determine rebalance/deposit/spend mode. `modal.payload.mode` was removed.
 - **Re-tag modal** — `PurposeTransferModalContent` is 2-phase: select source/target purposes → account slice grid. `executePurposeTransfer` now takes per-account transfers, not a single drain amount.
 - **MAX button in PurposeGrid** — each row has a MAX button that fills the row with the entire remaining delta and sets the mode to match the sign of the remainder. Disabled (greyed) when `remainder === 0`. `onMaxPress` handler lives in `RebalanceModalContent` and is passed as a prop.
+- **Taskbar sub-menu** — `Taskbar` renders a RN `Modal` (`transparent`) for the Account sub-menu (Deposit/Spend/Transfer). `taskbarHeight` is captured via `onLayout` so the pill positions correctly above the bar. Animation uses `Animated.spring` (open) and `Animated.timing` 100ms (close); `setSubMenuOpen(false)` is called in the animation callback, not immediately.
 - **Dimension value ordering** — `getDimensionTotals` uses `ORDER BY dv.id` (creation order), not alphabetical. All lists and pickers reflect insertion order.
 - **Purpose targets** — `purpose_targets` table stores optional target amounts for purposes. `getDimensionTotals` LEFT JOINs this table, so `DimensionValue.targetAmount` is always present (0 = no target). `setTargetAmount(db, dvId, cents)` uses INSERT OR REPLACE for `> 0` and DELETE for `0`. `ON DELETE CASCADE` ensures rows are removed when the purpose is deleted — no manual cleanup needed. The `purpose_targets` table is added via `CREATE TABLE IF NOT EXISTS` so existing installs gain it on next launch without a migration.
