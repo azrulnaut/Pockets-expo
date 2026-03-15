@@ -4,7 +4,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useAppStore } from '../../store/useAppStore';
 import { createDimensionValue, setTargetAmount } from '../../db/queries';
 import { DIM_ACCOUNTS, DIM_PURPOSE } from '../../constants';
-import { parseDollars } from '../../utils/format';
 
 export function AddModalContent() {
   const db = useSQLiteContext();
@@ -12,6 +11,7 @@ export function AddModalContent() {
   const closeModal = useAppStore((s) => s.closeModal);
   const loadState = useAppStore((s) => s.loadState);
   const showToast = useAppStore((s) => s.showToast);
+  const parse = useAppStore((s) => s.parse);
 
   const [label, setLabel] = useState('');
   const [targetAmountStr, setTargetAmountStr] = useState('');
@@ -27,7 +27,7 @@ export function AddModalContent() {
     try {
       const newDvId = await createDimensionValue(db, dimId, trimmed);
       if (type === 'purpose') {
-        const cents = parseDollars(targetAmountStr) ?? 0;
+        const cents = parse(targetAmountStr) ?? 0;
         if (cents > 0) await setTargetAmount(db, newDvId, cents);
       }
       closeModal();

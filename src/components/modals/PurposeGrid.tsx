@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import type { RebalanceCandidate } from '../../types';
-import { fmt } from '../../utils/format';
+import { useAppStore } from '../../store/useAppStore';
 
 export type PurposeMode = '+' | '-';
 
@@ -32,6 +32,7 @@ export function PurposeGrid({
   remainder,
   remainderLabel,
 }: Props) {
+  const fmt = useAppStore((s) => s.fmt);
   if (rows.length === 0) {
     return (
       <View style={styles.empty}>

@@ -12,7 +12,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useAppStore } from '../../store/useAppStore';
 import { getSlicesForDimensionValue } from '../../db/queries';
 import { executePurposeTransfer } from '../../db/database';
-import { fmt, parseDollars } from '../../utils/format';
 import { DIM_ACCOUNTS } from '../../constants';
 
 interface AccountSliceRow {
@@ -28,6 +27,8 @@ export function PurposeTransferModalContent() {
   const loadState = useAppStore((s) => s.loadState);
   const showToast = useAppStore((s) => s.showToast);
   const purposes = useAppStore((s) => s.purposes);
+  const fmt = useAppStore((s) => s.fmt);
+  const parse = useAppStore((s) => s.parse);
 
   const [sourceId, setSourceId] = useState(purposes[0]?.id ?? 0);
   const [targetId, setTargetId] = useState(purposes[1]?.id ?? 0);
@@ -63,12 +64,12 @@ export function PurposeTransferModalContent() {
     }
   };
 
-  const totalCents = rows.reduce((sum, r) => sum + (parseDollars(r.value) ?? 0), 0);
+  const totalCents = rows.reduce((sum, r) => sum + (parse(r.value) ?? 0), 0);
 
   const handleConfirm = async () => {
     if (totalCents <= 0) return showToast('Enter at least one amount to re-tag');
     for (const r of rows) {
-      const cents = parseDollars(r.value) ?? 0;
+      const cents = parse(r.value) ?? 0;
       if (cents > r.available) {
         return showToast(
           `Amount for ${r.accountLabel} exceeds available ${fmt(r.available)}`
@@ -76,7 +77,7 @@ export function PurposeTransferModalContent() {
       }
     }
     const transfers = rows
-      .map((r) => ({ accountDvId: r.accountDvId, amount: parseDollars(r.value) ?? 0 }))
+      .map((r) => ({ accountDvId: r.accountDvId, amount: parse(r.value) ?? 0 }))
       .filter((t) => t.amount > 0);
 
     try {

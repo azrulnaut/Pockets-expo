@@ -13,6 +13,7 @@ export function EditModeScreen() {
   const purposes = useAppStore((s) => s.purposes);
   const items = activeTab === 'accounts' ? accounts : purposes;
   const type = activeTab === 'accounts' ? 'account' : 'purpose';
+  const movableCount = items.filter((i) => !i.isProtected).length;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -28,7 +29,7 @@ export function EditModeScreen() {
             item={item}
             type={type}
             index={index}
-            total={items.length}
+            total={movableCount}
           />
         ))}
       </ScrollView>

@@ -34,8 +34,8 @@ eas build --platform android  # Production build
 App.tsx                         ← SQLiteProvider + SafeAreaProvider root
 src/
   constants.ts                  ← FUND_ID=1, DIM_ACCOUNTS=1, DIM_PURPOSE=2
-  types/index.ts                ← Fund, DimensionValue, SliceRow, Transfer, ModalConfig...
-  utils/format.ts               ← fmt(cents), parseDollars(str)
+  types/index.ts                ← Fund, DimensionValue, AppSettings, ActiveScreen, SliceRow, Transfer, ModalConfig...
+  utils/format.ts               ← createFormatter(settings), createParser(settings); default fmt/parseDollars exports
   db/
     schema.ts                   ← SCHEMA_SQL template literal (verbatim from source repo)
     database.ts                 ← initializeDatabase, executeAccountRebalance,
@@ -44,12 +44,14 @@ src/
                                    getRebalanceCandidates, createDimensionValue,
                                    renameDimensionValue, deleteDimensionValue,
                                    getAccountTotal, getPurposeTotal, syncFundTotal,
-                                   setTargetAmount
+                                   setTargetAmount, getSettings, setSetting
   store/
-    useAppStore.ts              ← Zustand store (AppState + UIState + ModalState slices)
+    useAppStore.ts              ← Zustand store (AppState + UIState + ModalState + SettingsState slices)
+                                   Exposes `fmt` and `parse` as computed functions derived from `settings`
   screens/
     MainScreen.tsx              ← Main screen, assembles all components; shown when `activeScreen === 'main'`
     EditModeScreen.tsx          ← Edit Mode screen (orange header); shown when `activeScreen === 'editMode'`
+    SettingsScreen.tsx          ← Settings screen (gray-700 header); shown when `activeScreen === 'settings'`
   components/
     BalanceHeader.tsx           ← Fund name + total (dark header)
     TabBar.tsx                  ← Accounts | Purposes tab switcher (wallet-outline / cube-outline icons)
@@ -70,21 +72,24 @@ src/
       PurposeTransferModalContent.tsx  ← Re-tag between purposes
 ```
 
-## Database Schema (6 tables)
+## Database Schema (7 tables)
 
 ```sql
 funds                 -- id, name, total_amount (kept in sync), currency
 dimensions            -- id, name, is_balancing, allows_multiple
   Seeded: 1=Accounts, 2=Purpose, 3=Notes
-dimension_values      -- id, dimension_id, label  (UNIQUE per dimension)
+dimension_values      -- id, dimension_id, label, sort_order, is_protected (UNIQUE per dimension)
+  Seeded protected: (dimension_id=2, label='Unallocated', is_protected=1)
 allocation_slices     -- id, fund_id, amount (INTEGER cents), note
 slice_dimensions      -- slice_id → dimension_value_id  (junction, UNIQUE pair)
 purpose_targets       -- dimension_value_id (FK → dimension_values, CASCADE), target_amount (INTEGER cents, UNIQUE per dv)
+settings              -- key TEXT PRIMARY KEY, value TEXT (currency, symbolDisplay, numberFormat)
+  Defaults: currency='MYR', symbolDisplay='show', numberFormat='english'
 ```
 
 ## Key Business Rules
 
-1. **Integer cents** — all amounts stored as INTEGER, never float. `parseDollars()` converts user input via `Math.round(v * 100)`.
+1. **Integer cents** — all amounts stored as INTEGER, never float. `parse()` (from store) converts user input via `Math.round(v * 100)`. Respects `numberFormat` setting for European decimal comma.
 2. **syncFundTotal** — must be called after any slice mutation. Recalculates `funds.total_amount` as `SUM(allocation_slices.amount)`.
 3. **Rebalance validation** — `portionSum === delta` must hold before calling `executeAccountRebalance`. The UI enforces this by disabling Confirm until remainder === 0.
 4. **Account delete** — deletes all slices tagged with that account first, then the dimension_value, then calls syncFundTotal.
@@ -144,5 +149,10 @@ Single `AppModal` component reads `modal.type` from Zustand and renders the corr
 - **Taskbar switches to main before modals** — Deposit, Spend, Transfer (account), and Re-tag all call `setActiveScreen('main')` before `openModal(...)`. This ensures the modal appears over the main screen even if the user triggered it from Edit Mode.
 - **Edit Mode orange theme** — `EditModeScreen` header is `#c2410c`; `TabBar` and `AddBar` read `activeScreen` from the store and switch their accent color to `#ea580c` when `activeScreen === 'editMode'`. `EditModeRow` chevron squares are `#ea580c` (active) / `#fed7aa` (disabled); Edit button is `#fff7ed` bg / `#ea580c` text.
 - **EditModeRow chevrons** — two side-by-side 29×29 rounded squares (`borderRadius: 6`), icon size 18, always white icon color; active bg `#ea580c`, disabled bg `#fed7aa`.
-- **Dimension value ordering** — `getDimensionTotals` uses `ORDER BY dv.id` (creation order), not alphabetical. All lists and pickers reflect insertion order.
+- **Dimension value ordering** — `getDimensionTotals` uses `ORDER BY dv.is_protected ASC, COALESCE(dv.sort_order, dv.id) ASC`. Protected items always sort last. `swapDimensionValueOrder` filters `AND is_protected = 0` so protected rows never participate in swaps.
 - **Purpose targets** — `purpose_targets` table stores optional target amounts for purposes. `getDimensionTotals` LEFT JOINs this table, so `DimensionValue.targetAmount` is always present (0 = no target). `setTargetAmount(db, dvId, cents)` uses INSERT OR REPLACE for `> 0` and DELETE for `0`. `ON DELETE CASCADE` ensures rows are removed when the purpose is deleted — no manual cleanup needed. The `purpose_targets` table is added via `CREATE TABLE IF NOT EXISTS` so existing installs gain it on next launch without a migration.
+- **Unallocated protected purpose** — seeded as `(dimension_id=2, label='Unallocated', is_protected=1)` in `initializeDatabase` (after `is_protected` migration). Always appears last in purposes list. `EditModeRow` disables both chevrons and the Edit button when `item.isProtected`. `EditModeScreen` passes `movableCount` (non-protected items only) as `total` to each `EditModeRow`.
+- **`fmt` and `parse` from store** — all components must use `const fmt = useAppStore((s) => s.fmt)` and `const parse = useAppStore((s) => s.parse)` rather than importing directly from `format.ts`. The store recomputes these when settings change via `createFormatter(settings)` / `createParser(settings)`.
+- **Settings screen** — `activeScreen === 'settings'` renders `SettingsScreen` (gray-700 header `#374151`). Currency cycles via a bottom-sheet Modal (11 curated 2-decimal currencies: MYR first, then AUD/CAD/CHF/CNY/EUR/GBP/HKD/NZD/SGD/USD). Symbol display and number format cycle on tap. Live preview box shows `fmt(123456)` with current settings.
+- **Settings persistence** — `settings` table with key/value rows. `getSettings` / `setSetting` in `queries.ts`. Store actions: `loadSettings(db)` (called on init alongside `loadState`), `updateSetting(db, key, value)`. Only 2-decimal-place currencies supported (JPY and 0-decimal currencies excluded — existing cent-based storage is incompatible).
+- **Taskbar navigation** — each top-level button always navigates first: Home → `setActiveTab('accounts')` + `setActiveScreen('main')`; Transact → same nav then toggles sub-menu (Deposit/Spend/Transfer handlers no longer repeat nav); Edit Mode → `setActiveTab('accounts')` + `setActiveScreen('editMode')`; Settings → `setActiveScreen('settings')`.

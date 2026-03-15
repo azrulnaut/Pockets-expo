@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS dimension_values (
     dimension_id INTEGER NOT NULL REFERENCES dimensions(id) ON DELETE RESTRICT,
     label        TEXT    NOT NULL,
     sort_order   INTEGER,
+    is_protected INTEGER NOT NULL DEFAULT 0,
     created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
     UNIQUE (dimension_id, label)
 );
@@ -62,4 +63,14 @@ CREATE TABLE IF NOT EXISTS purpose_targets (
     target_amount      INTEGER NOT NULL DEFAULT 0,
     UNIQUE (dimension_value_id)
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO settings (key, value) VALUES
+    ('currency', 'MYR'),
+    ('symbolDisplay', 'show'),
+    ('numberFormat', 'english');
 `;

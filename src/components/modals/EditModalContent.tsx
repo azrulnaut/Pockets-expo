@@ -4,7 +4,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useAppStore } from '../../store/useAppStore';
 import { renameDimensionValue, deleteDimensionValue, setTargetAmount } from '../../db/queries';
 import { DIM_ACCOUNTS, DIM_PURPOSE } from '../../constants';
-import { parseDollars, fmt } from '../../utils/format';
 
 export function EditModalContent() {
   const db = useSQLiteContext();
@@ -12,6 +11,8 @@ export function EditModalContent() {
   const closeModal = useAppStore((s) => s.closeModal);
   const loadState = useAppStore((s) => s.loadState);
   const showToast = useAppStore((s) => s.showToast);
+  const fmt = useAppStore((s) => s.fmt);
+  const parse = useAppStore((s) => s.parse);
   const type = modal.payload?.type ?? 'account';
   const dvId = modal.payload?.dvId ?? 0;
   const currentLabel = modal.payload?.label ?? '';
@@ -31,7 +32,7 @@ export function EditModalContent() {
     try {
       await renameDimensionValue(db, dvId, dimId, trimmed);
       if (type === 'purpose') {
-        const cents = parseDollars(targetAmountStr) ?? 0;
+        const cents = parse(targetAmountStr) ?? 0;
         await setTargetAmount(db, dvId, cents);
       }
       closeModal();

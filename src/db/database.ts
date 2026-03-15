@@ -13,6 +13,18 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
     await db.execAsync('ALTER TABLE dimension_values ADD COLUMN sort_order INTEGER');
   } catch (_) { /* column already exists */ }
   await db.execAsync('UPDATE dimension_values SET sort_order = id WHERE sort_order IS NULL');
+
+  // Migration: add is_protected column for existing installs
+  try {
+    await db.execAsync(
+      'ALTER TABLE dimension_values ADD COLUMN is_protected INTEGER NOT NULL DEFAULT 0'
+    );
+  } catch (_) { /* column already exists */ }
+
+  // Seed protected Unallocated purpose (runs after migration so column exists)
+  await db.execAsync(
+    `INSERT OR IGNORE INTO dimension_values (dimension_id, label, is_protected) VALUES (2, 'Unallocated', 1)`
+  );
 }
 
 // ---------------------------------------------------------------------------

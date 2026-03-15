@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
-import { fmt } from '../utils/format';
 
 export function BalanceHeader() {
   const fund = useAppStore((s) => s.fund);
+  const fmt = useAppStore((s) => s.fmt);
 
   return (
     <View style={styles.container}>

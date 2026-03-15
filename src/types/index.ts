@@ -9,7 +9,16 @@ export interface DimensionValue {
   label: string;
   total: number;
   targetAmount?: number;
+  isProtected: boolean;
 }
+
+export interface AppSettings {
+  currency: string;
+  symbolDisplay: 'show' | 'hide' | 'iso';
+  numberFormat: 'english' | 'european' | 'swiss';
+}
+
+export type ActiveScreen = 'main' | 'editMode' | 'settings';
 
 export interface SliceRow {
   id: number;

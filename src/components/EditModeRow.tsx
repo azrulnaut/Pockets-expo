@@ -5,7 +5,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import type { DimensionValue } from '../types';
 import { useAppStore } from '../store/useAppStore';
 import { swapDimensionValueOrder } from '../db/queries';
-import { fmt } from '../utils/format';
 
 interface Props {
   item: DimensionValue;
@@ -18,6 +17,7 @@ export function EditModeRow({ item, type, index, total }: Props) {
   const db = useSQLiteContext();
   const openModal = useAppStore((s) => s.openModal);
   const loadState = useAppStore((s) => s.loadState);
+  const fmt = useAppStore((s) => s.fmt);
 
   const handleEdit = () => {
     openModal({
@@ -32,8 +32,8 @@ export function EditModeRow({ item, type, index, total }: Props) {
     await loadState(db);
   };
 
-  const canMoveUp = index > 0;
-  const canMoveDown = index < total - 1;
+  const canMoveUp = !item.isProtected && index > 0;
+  const canMoveDown = !item.isProtected && index < total - 1;
 
   return (
     <View style={styles.row}>
@@ -55,8 +55,8 @@ export function EditModeRow({ item, type, index, total }: Props) {
       </View>
       <Text style={styles.label} numberOfLines={1}>{item.label}</Text>
       <Text style={styles.amount}>{fmt(item.total)}</Text>
-      <TouchableOpacity style={styles.editBtn} onPress={handleEdit}>
-        <Text style={styles.editBtnText}>Edit</Text>
+      <TouchableOpacity style={styles.editBtn} onPress={handleEdit} disabled={item.isProtected}>
+        <Text style={[styles.editBtnText, item.isProtected && styles.editBtnTextDisabled]}>Edit</Text>
       </TouchableOpacity>
     </View>
   );
@@ -106,5 +106,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#ea580c',
     fontWeight: '500',
+  },
+  editBtnTextDisabled: {
+    color: '#fdba74',
   },
 });

@@ -67,10 +67,13 @@ export function Taskbar() {
   const handleHome = () => {
     if (transactSubMenuOpen) closeTransactMenu();
     if (toolsSubMenuOpen) closeToolsMenu();
-    if (activeScreen !== 'main') setActiveScreen('main');
+    setActiveTab('accounts');
+    setActiveScreen('main');
   };
 
   const handleAccountTransactions = () => {
+    setActiveTab('accounts');
+    setActiveScreen('main');
     if (transactSubMenuOpen) {
       closeTransactMenu();
     } else {
@@ -81,8 +84,6 @@ export function Taskbar() {
   const handleDeposit = () => {
     closeTransactMenu(() => {
       if (accounts.length === 0) return showToast('Add an account first');
-      setActiveTab('accounts');
-      setActiveScreen('main');
       openModal({ type: 'deposit' });
     });
   };
@@ -90,8 +91,6 @@ export function Taskbar() {
   const handleTransfer = () => {
     closeTransactMenu(() => {
       if (accounts.length < 2) return showToast('Need at least 2 accounts to transfer between');
-      setActiveTab('accounts');
-      setActiveScreen('main');
       openModal({ type: 'accountTransfer' });
     });
   };
@@ -101,8 +100,6 @@ export function Taskbar() {
       const eligible = accounts.filter((a) => a.total > 0);
       if (accounts.length === 0) return showToast('Add an account first');
       if (eligible.length === 0) return showToast('No accounts with balance to spend from');
-      setActiveTab('accounts');
-      setActiveScreen('main');
       openModal({ type: 'spend' });
     });
   };
@@ -125,7 +122,14 @@ export function Taskbar() {
   };
 
   const handleEditMode = () => {
-    closeToolsMenu(() => setActiveScreen('editMode'));
+    closeToolsMenu(() => {
+      setActiveTab('accounts');
+      setActiveScreen('editMode');
+    });
+  };
+
+  const handleSettings = () => {
+    closeToolsMenu(() => setActiveScreen('settings'));
   };
 
   return (
@@ -213,7 +217,7 @@ export function Taskbar() {
             </View>
             <Text style={styles.subMenuLabel}>Edit Mode</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.subMenuItem} onPress={() => closeToolsMenu()}>
+          <TouchableOpacity style={styles.subMenuItem} onPress={handleSettings}>
             <View style={[styles.subMenuCircle, { backgroundColor: '#334155' }]}>
               <Ionicons name="settings-outline" size={26} color="#94a3b8" />
             </View>

@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { DimensionValue, Fund, ModalConfig, ModalType, SliceRow } from '../types';
-import { getState, getSlicesForDimensionValue } from '../db/queries';
+import type { ActiveScreen, AppSettings, DimensionValue, Fund, ModalConfig, SliceRow } from '../types';
+import { getState, getSlicesForDimensionValue, getSettings, setSetting } from '../db/queries';
+import { createFormatter, createParser } from '../utils/format';
 import { DIM_ACCOUNTS, DIM_PURPOSE } from '../constants';
+
+const DEFAULT_SETTINGS: AppSettings = { currency: 'MYR', symbolDisplay: 'show', numberFormat: 'english' };
 
 interface AppState {
   // App data
@@ -12,7 +15,7 @@ interface AppState {
 
   // UI state
   activeTab: 'accounts' | 'purposes';
-  activeScreen: 'main' | 'editMode';
+  activeScreen: ActiveScreen;
   expandedAccounts: Set<number>;
   expandedPurposes: Set<number>;
   sliceCache: Record<string, SliceRow[]>;
@@ -21,10 +24,17 @@ interface AppState {
   modal: ModalConfig;
   toastMessage: string | null;
 
+  // Settings
+  settings: AppSettings;
+  fmt: (cents: number) => string;
+  parse: (str: string) => number | null;
+
   // Actions
   loadState: (db: SQLiteDatabase) => Promise<void>;
+  loadSettings: (db: SQLiteDatabase) => Promise<void>;
+  updateSetting: (db: SQLiteDatabase, key: string, value: string) => Promise<void>;
   setActiveTab: (tab: 'accounts' | 'purposes') => void;
-  setActiveScreen: (screen: 'main' | 'editMode') => void;
+  setActiveScreen: (screen: ActiveScreen) => void;
   toggleExpand: (db: SQLiteDatabase, type: 'account' | 'purpose', dvId: number) => Promise<void>;
   invalidateSliceCache: () => void;
   openModal: (config: ModalConfig) => void;
@@ -48,6 +58,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   modal: { type: 'none' },
   toastMessage: null,
 
+  settings: DEFAULT_SETTINGS,
+  fmt: createFormatter(DEFAULT_SETTINGS),
+  parse: createParser(DEFAULT_SETTINGS),
+
   // Actions
   loadState: async (db) => {
     try {
@@ -66,6 +80,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ fund: data.fund, accounts: data.accounts, purposes: data.purposes, sliceCache });
     } catch (e: any) {
       get().showToast('Failed to load state: ' + e.message);
+    }
+  },
+
+  loadSettings: async (db) => {
+    try {
+      const settings = await getSettings(db);
+      set({ settings, fmt: createFormatter(settings), parse: createParser(settings) });
+    } catch (e: any) {
+      get().showToast('Failed to load settings: ' + e.message);
+    }
+  },
+
+  updateSetting: async (db, key, value) => {
+    try {
+      await setSetting(db, key, value);
+      await get().loadSettings(db);
+    } catch (e: any) {
+      get().showToast('Failed to save setting: ' + e.message);
     }
   },
 

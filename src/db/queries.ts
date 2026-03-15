@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { DimensionValue, Fund, RebalanceCandidate, SliceRow } from '../types';
+import type { AppSettings, DimensionValue, Fund, RebalanceCandidate, SliceRow } from '../types';
 import { DIM_ACCOUNTS, DIM_PURPOSE, FUND_ID } from '../constants';
 
 export async function getState(
@@ -18,19 +18,23 @@ export async function getDimensionTotals(
   db: SQLiteDatabase,
   dimId: number
 ): Promise<DimensionValue[]> {
-  return db.getAllAsync<DimensionValue>(
+  const rows = await db.getAllAsync<{
+    id: number; label: string; total: number; targetAmount: number; is_protected: number;
+  }>(
     `SELECT dv.id, dv.label,
             COALESCE(SUM(s.amount), 0) AS total,
-            COALESCE(pt.target_amount, 0) AS targetAmount
+            COALESCE(pt.target_amount, 0) AS targetAmount,
+            dv.is_protected
      FROM dimension_values dv
      LEFT JOIN slice_dimensions sd ON sd.dimension_value_id = dv.id
      LEFT JOIN allocation_slices s  ON s.id = sd.slice_id AND s.fund_id = ?
      LEFT JOIN purpose_targets pt   ON pt.dimension_value_id = dv.id
      WHERE dv.dimension_id = ?
-     GROUP BY dv.id, dv.label, pt.target_amount
-     ORDER BY COALESCE(dv.sort_order, dv.id)`,
+     GROUP BY dv.id, dv.label, pt.target_amount, dv.is_protected
+     ORDER BY dv.is_protected ASC, COALESCE(dv.sort_order, dv.id) ASC`,
     [FUND_ID, dimId]
   );
+  return rows.map((r) => ({ ...r, isProtected: r.is_protected === 1 }));
 }
 
 export async function setTargetAmount(
@@ -174,6 +178,23 @@ export async function syncFundTotal(db: SQLiteDatabase): Promise<number> {
   return total;
 }
 
+export async function getSettings(db: SQLiteDatabase): Promise<AppSettings> {
+  const rows = await db.getAllAsync<{ key: string; value: string }>(
+    'SELECT key, value FROM settings'
+  );
+  const map: Record<string, string> = {};
+  for (const row of rows) map[row.key] = row.value;
+  return {
+    currency: map.currency ?? 'MYR',
+    symbolDisplay: (map.symbolDisplay ?? 'show') as AppSettings['symbolDisplay'],
+    numberFormat: (map.numberFormat ?? 'english') as AppSettings['numberFormat'],
+  };
+}
+
+export async function setSetting(db: SQLiteDatabase, key: string, value: string): Promise<void> {
+  await db.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
+}
+
 export async function swapDimensionValueOrder(
   db: SQLiteDatabase,
   movingId: number,
@@ -182,7 +203,7 @@ export async function swapDimensionValueOrder(
 ): Promise<void> {
   const dimId = type === 'account' ? DIM_ACCOUNTS : DIM_PURPOSE;
   const rows = await db.getAllAsync<{ id: number }>(
-    'SELECT id FROM dimension_values WHERE dimension_id = ? ORDER BY COALESCE(sort_order, id)',
+    'SELECT id FROM dimension_values WHERE dimension_id = ? AND is_protected = 0 ORDER BY COALESCE(sort_order, id)',
     [dimId]
   );
   const neighbourId = rows[neighbourIndex]?.id;

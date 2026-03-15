@@ -12,7 +12,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useAppStore } from '../../store/useAppStore';
 import { getRebalanceCandidates } from '../../db/queries';
 import { executeAccountRebalance } from '../../db/database';
-import { fmt, parseDollars } from '../../utils/format';
 import type { RebalanceCandidate, Transfer } from '../../types';
 import { PurposeGrid, PurposeMode, PurposeRowState } from './PurposeGrid';
 
@@ -23,6 +22,8 @@ export function RebalanceModalContent() {
   const loadState = useAppStore((s) => s.loadState);
   const showToast = useAppStore((s) => s.showToast);
   const accounts = useAppStore((s) => s.accounts);
+  const fmt = useAppStore((s) => s.fmt);
+  const parse = useAppStore((s) => s.parse);
 
   // modal.type is the source of truth for mode
   const modalMode = modal.type as 'rebalance' | 'deposit' | 'spend';
@@ -75,17 +76,16 @@ export function RebalanceModalContent() {
     [db, showToast]
   );
 
-  // Load grid immediately for rebalance mode
+  // Load grid immediately for rebalance mode (use payloadCurrentTotal directly — cents already known)
   useEffect(() => {
     if (modalMode === 'rebalance') {
-      const nt = parseDollars(newTotalStr);
-      if (nt !== null) fetchCandidates(payloadDvId, nt);
+      fetchCandidates(payloadDvId, payloadCurrentTotal);
     }
   }, []);
 
   const handleNewTotalChange = (v: string) => {
     setNewTotalStr(v);
-    const cents = parseDollars(v);
+    const cents = parse(v);
     if (cents !== null && candidates) {
       setCandidates((prev) =>
         prev ? { ...prev, delta: cents - prev.currentTotal, newTotal: cents } : prev
@@ -97,7 +97,7 @@ export function RebalanceModalContent() {
   };
 
   const handleContinue = async () => {
-    const amountCents = parseDollars(amountStr);
+    const amountCents = parse(amountStr);
     if (!amountCents || amountCents <= 0) return showToast('Enter a valid amount');
     const acct = accounts.find((a) => a.id === selectedAccountId);
     if (!acct) return showToast('Select an account');
@@ -110,7 +110,7 @@ export function RebalanceModalContent() {
   };
 
   const portionSum = rows.reduce((sum, r) => {
-    const cents = parseDollars(r.value) ?? 0;
+    const cents = parse(r.value) ?? 0;
     return sum + (r.mode === '+' ? cents : -cents);
   }, 0);
 
@@ -131,7 +131,7 @@ export function RebalanceModalContent() {
 
     const transfers: Transfer[] = rows
       .map((r) => {
-        const cents = parseDollars(r.value) ?? 0;
+        const cents = parse(r.value) ?? 0;
         if (cents === 0) return null;
         return { purposeId: r.purpose.id, portion: r.mode === '+' ? cents : -cents };
       })

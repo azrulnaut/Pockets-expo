@@ -10,14 +10,17 @@ import { Taskbar } from '../components/Taskbar';
 import { AppModal } from '../components/AppModal';
 import { Toast } from '../components/Toast';
 import { EditModeScreen } from './EditModeScreen';
+import { SettingsScreen } from './SettingsScreen';
 
 export function MainScreen() {
   const db = useSQLiteContext();
   const loadState = useAppStore((s) => s.loadState);
+  const loadSettings = useAppStore((s) => s.loadSettings);
   const activeScreen = useAppStore((s) => s.activeScreen);
 
   useEffect(() => {
     loadState(db);
+    loadSettings(db);
   }, [db]);
 
   return (
@@ -31,8 +34,10 @@ export function MainScreen() {
             <DimensionList />
           </ScrollView>
         </>
-      ) : (
+      ) : activeScreen === 'editMode' ? (
         <EditModeScreen />
+      ) : (
+        <SettingsScreen />
       )}
       <Taskbar />
       <AppModal />

@@ -1,13 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { SliceRow } from '../types';
-import { fmt } from '../utils/format';
+import { useAppStore } from '../store/useAppStore';
 
 interface Props {
   slice: SliceRow;
 }
 
 export function SliceSubRow({ slice }: Props) {
+  const fmt = useAppStore((s) => s.fmt);
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{slice.other_label ?? '(untagged)'}</Text>

@@ -5,7 +5,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import type { DimensionValue } from '../types';
 import { useAppStore } from '../store/useAppStore';
 import { SliceSubRow } from './SliceSubRow';
-import { fmt } from '../utils/format';
 
 interface Props {
   item: DimensionValue;
@@ -16,6 +15,7 @@ export function DimensionRow({ item, type }: Props) {
   const db = useSQLiteContext();
   const toggleExpand = useAppStore((s) => s.toggleExpand);
   const openModal = useAppStore((s) => s.openModal);
+  const fmt = useAppStore((s) => s.fmt);
   const expandedAccounts = useAppStore((s) => s.expandedAccounts);
   const expandedPurposes = useAppStore((s) => s.expandedPurposes);
   const sliceCache = useAppStore((s) => s.sliceCache);

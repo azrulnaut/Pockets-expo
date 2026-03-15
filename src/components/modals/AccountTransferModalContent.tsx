@@ -11,7 +11,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useAppStore } from '../../store/useAppStore';
 import { getRebalanceCandidates } from '../../db/queries';
 import { executeAccountTransfer } from '../../db/database';
-import { fmt, parseDollars } from '../../utils/format';
 import type { Transfer } from '../../types';
 import { PurposeGrid, PurposeRowState } from './PurposeGrid';
 
@@ -21,6 +20,8 @@ export function AccountTransferModalContent() {
   const loadState = useAppStore((s) => s.loadState);
   const showToast = useAppStore((s) => s.showToast);
   const accounts = useAppStore((s) => s.accounts);
+  const fmt = useAppStore((s) => s.fmt);
+  const parse = useAppStore((s) => s.parse);
 
   const [sourceId, setSourceId] = useState(accounts[0]?.id ?? 0);
   const [targetId, setTargetId] = useState(accounts[1]?.id ?? 0);
@@ -50,7 +51,7 @@ export function AccountTransferModalContent() {
   };
 
   const totalCents = rows.reduce((sum, r) => {
-    return sum + (parseDollars(r.value) ?? 0);
+    return sum + (parse(r.value) ?? 0);
   }, 0);
 
   const handleConfirm = async () => {
@@ -58,7 +59,7 @@ export function AccountTransferModalContent() {
 
     const transfers: Transfer[] = [];
     for (const r of rows) {
-      const cents = parseDollars(r.value) ?? 0;
+      const cents = parse(r.value) ?? 0;
       if (cents <= 0) continue;
       if (cents > r.purpose.currentInAccount) {
         showToast(
