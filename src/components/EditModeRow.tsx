@@ -43,14 +43,14 @@ export function EditModeRow({ item, type, index, total }: Props) {
           disabled={!canMoveUp}
           style={[styles.moveBtn, { backgroundColor: canMoveUp ? '#ea580c' : '#fed7aa' }]}
         >
-          <Ionicons name="chevron-up-outline" size={22} color="#ffffff" />
+          <Ionicons name="chevron-up-outline" size={18} color="#ffffff" />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => handleMove('down')}
           disabled={!canMoveDown}
           style={[styles.moveBtn, { backgroundColor: canMoveDown ? '#ea580c' : '#fed7aa' }]}
         >
-          <Ionicons name="chevron-down-outline" size={22} color="#ffffff" />
+          <Ionicons name="chevron-down-outline" size={18} color="#ffffff" />
         </TouchableOpacity>
       </View>
       <Text style={styles.label} numberOfLines={1}>{item.label}</Text>
@@ -78,9 +78,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   moveBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 29,
+    height: 29,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
