@@ -33,6 +33,7 @@ export function PurposeGrid({
   remainderLabel,
 }: Props) {
   const fmt = useAppStore((s) => s.fmt);
+  const parse = useAppStore((s) => s.parse);
   if (rows.length === 0) {
     return (
       <View style={styles.empty}>
@@ -45,46 +46,54 @@ export function PurposeGrid({
 
   return (
     <View>
-      {rows.map(({ purpose, mode, value }) => (
-        <View key={purpose.id} style={[styles.row, mode === '+' ? styles.rowPlus : styles.rowMinus]}>
-          <View style={styles.labelCol}>
-            <Text style={styles.purposeLabel} numberOfLines={1}>{purpose.label}</Text>
-            <Text style={styles.purposeCurrent}>{fmt(purpose.currentInAccount)}</Text>
-          </View>
-          {showMaxButton && (
-            <TouchableOpacity
-              style={[styles.maxBtn, isZero && styles.maxBtnDisabled]}
-              onPress={() => onMaxPress?.(purpose.id)}
-              disabled={isZero}
-            >
-              <Text style={[styles.maxBtnText, isZero && styles.maxBtnTextDisabled]}>MAX</Text>
-            </TouchableOpacity>
-          )}
-          {showModeButtons && (
-            <View style={styles.modeBtns}>
-              <TouchableOpacity
-                style={[styles.modeBtn, mode === '+' && styles.modeBtnActive]}
-                onPress={() => onChangeMode(purpose.id, '+')}
-              >
-                <Text style={[styles.modeBtnText, mode === '+' && styles.modeBtnTextActive]}>+</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modeBtn, mode === '-' && styles.modeBtnActiveMinus]}
-                onPress={() => onChangeMode(purpose.id, '-')}
-              >
-                <Text style={[styles.modeBtnText, mode === '-' && styles.modeBtnTextActive]}>−</Text>
-              </TouchableOpacity>
+      {rows.map(({ purpose, mode, value }) => {
+        const signedCurrent = (mode === '+' ? 1 : -1) * (parse(value) ?? 0);
+        const effectiveRemainder = remainder + signedCurrent;
+        const isMaxDisabled =
+          effectiveRemainder === 0 ||
+          (effectiveRemainder < 0 && purpose.currentInAccount === 0);
+        const isOverdrawn = mode === '-' && (parse(value) ?? 0) > purpose.currentInAccount;
+        return (
+          <View key={purpose.id} style={[styles.row, mode === '+' ? styles.rowPlus : styles.rowMinus]}>
+            <View style={styles.labelCol}>
+              <Text style={styles.purposeLabel} numberOfLines={1}>{purpose.label}</Text>
+              <Text style={styles.purposeCurrent}>{fmt(purpose.currentInAccount)}</Text>
             </View>
-          )}
-          <TextInput
-            style={styles.input}
-            keyboardType="decimal-pad"
-            placeholder="0.00"
-            value={value}
-            onChangeText={(v) => onChangeValue(purpose.id, v)}
-          />
-        </View>
-      ))}
+            {showMaxButton && (
+              <TouchableOpacity
+                style={[styles.maxBtn, isMaxDisabled && styles.maxBtnDisabled]}
+                onPress={() => onMaxPress?.(purpose.id)}
+                disabled={isMaxDisabled}
+              >
+                <Text style={[styles.maxBtnText, isMaxDisabled && styles.maxBtnTextDisabled]}>MAX</Text>
+              </TouchableOpacity>
+            )}
+            {showModeButtons && (
+              <View style={styles.modeBtns}>
+                <TouchableOpacity
+                  style={[styles.modeBtn, mode === '+' && styles.modeBtnActive]}
+                  onPress={() => onChangeMode(purpose.id, '+')}
+                >
+                  <Text style={[styles.modeBtnText, mode === '+' && styles.modeBtnTextActive]}>+</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modeBtn, mode === '-' && styles.modeBtnActiveMinus]}
+                  onPress={() => onChangeMode(purpose.id, '-')}
+                >
+                  <Text style={[styles.modeBtnText, mode === '-' && styles.modeBtnTextActive]}>−</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            <TextInput
+              style={[styles.input, isOverdrawn && styles.inputOverdrawn]}
+              keyboardType="decimal-pad"
+              placeholder="0.00"
+              value={value}
+              onChangeText={(v) => onChangeValue(purpose.id, v)}
+            />
+          </View>
+        );
+      })}
       <View style={[styles.remainderRow, isZero ? styles.remainderZero : styles.remainderNonzero]}>
         <Text style={styles.remainderLabel}>{remainderLabel}</Text>
         <Text style={[styles.remainderValue, isZero ? styles.remainderValueZero : styles.remainderValueNonzero]}>
@@ -215,4 +224,7 @@ const styles = StyleSheet.create({
   },
   remainderValueZero: { color: '#16a34a' },
   remainderValueNonzero: { color: '#ca8a04' },
+  inputOverdrawn: {
+    color: '#ef4444',
+  },
 });

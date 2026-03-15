@@ -118,10 +118,22 @@ export function RebalanceModalContent() {
   const remainder = delta - portionSum;
 
   const handleMax = (id: number) => {
-    const absVal = (Math.abs(remainder) / 100).toFixed(2);
-    const mode: PurposeMode = remainder >= 0 ? '+' : '-';
+    const row = rows.find((r) => r.purpose.id === id);
+    if (!row) return;
+    const signedCurrent = (row.mode === '+' ? 1 : -1) * (parse(row.value) ?? 0);
+    const effectiveRemainder = remainder + signedCurrent;
+    let newValue: string;
+    let newMode: PurposeMode;
+    if (effectiveRemainder >= 0) {
+      newValue = (effectiveRemainder / 100).toFixed(2);
+      newMode = '+';
+    } else {
+      const capped = Math.min(Math.abs(effectiveRemainder), row.purpose.currentInAccount);
+      newValue = (capped / 100).toFixed(2);
+      newMode = '-';
+    }
     setRows((prev) =>
-      prev.map((r) => (r.purpose.id === id ? { ...r, value: absVal, mode } : r))
+      prev.map((r) => (r.purpose.id === id ? { ...r, value: newValue, mode: newMode } : r))
     );
   };
 
