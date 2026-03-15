@@ -29,10 +29,6 @@ export function DimensionRow({ item, type }: Props) {
     toggleExpand(db, type, item.id);
   };
 
-  const handleGear = () => {
-    openModal({ type: 'edit', payload: { type, dvId: item.id, label: item.label, targetAmount: item.targetAmount } });
-  };
-
   const handleAction = () => {
     if (type === 'account') {
       openModal({
@@ -65,9 +61,6 @@ export function DimensionRow({ item, type }: Props) {
             <Text style={styles.actionBtnText}>Update</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.gearBtn} onPress={handleGear}>
-          <Ionicons name="settings-outline" size={16} color="#94a3b8" />
-        </TouchableOpacity>
       </TouchableOpacity>
 
       {isExpanded && (
@@ -132,9 +125,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#3b82f6',
     fontWeight: '500',
-  },
-  gearBtn: {
-    padding: 4,
   },
   loadingRow: {
     paddingVertical: 12,

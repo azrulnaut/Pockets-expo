@@ -5,6 +5,8 @@ import { useAppStore } from '../store/useAppStore';
 export function AddBar() {
   const activeTab = useAppStore((s) => s.activeTab);
   const openModal = useAppStore((s) => s.openModal);
+  const activeScreen = useAppStore((s) => s.activeScreen);
+  const btnColor = activeScreen === 'editMode' ? '#ea580c' : '#3b82f6';
 
   const handleAdd = () => {
     openModal({ type: 'add', payload: { type: activeTab === 'accounts' ? 'account' : 'purpose' } });
@@ -12,7 +14,7 @@ export function AddBar() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.button} onPress={handleAdd}>
+      <TouchableOpacity style={[styles.button, { backgroundColor: btnColor }]} onPress={handleAdd}>
         <Text style={styles.buttonText}>+ Add {activeTab === 'accounts' ? 'Account' : 'Purpose'}</Text>
       </TouchableOpacity>
     </View>
@@ -28,7 +30,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e2e8f0',
   },
   button: {
-    backgroundColor: '#3b82f6',
     borderRadius: 6,
     paddingVertical: 8,
     paddingHorizontal: 16,

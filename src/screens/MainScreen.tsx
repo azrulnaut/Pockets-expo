@@ -9,10 +9,12 @@ import { DimensionList } from '../components/DimensionList';
 import { Taskbar } from '../components/Taskbar';
 import { AppModal } from '../components/AppModal';
 import { Toast } from '../components/Toast';
+import { EditModeScreen } from './EditModeScreen';
 
 export function MainScreen() {
   const db = useSQLiteContext();
   const loadState = useAppStore((s) => s.loadState);
+  const activeScreen = useAppStore((s) => s.activeScreen);
 
   useEffect(() => {
     loadState(db);
@@ -20,12 +22,18 @@ export function MainScreen() {
 
   return (
     <View style={styles.container}>
-      <BalanceHeader />
-      <TabBar />
-      <AddBar />
-      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-        <DimensionList />
-      </ScrollView>
+      {activeScreen === 'main' ? (
+        <>
+          <BalanceHeader />
+          <TabBar />
+          <AddBar />
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+            <DimensionList />
+          </ScrollView>
+        </>
+      ) : (
+        <EditModeScreen />
+      )}
       <Taskbar />
       <AppModal />
       <Toast />

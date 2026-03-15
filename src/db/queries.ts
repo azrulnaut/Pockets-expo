@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { DimensionValue, Fund, RebalanceCandidate, SliceRow } from '../types';
-import { FUND_ID } from '../constants';
+import { DIM_ACCOUNTS, DIM_PURPOSE, FUND_ID } from '../constants';
 
 export async function getState(
   db: SQLiteDatabase
@@ -28,7 +28,7 @@ export async function getDimensionTotals(
      LEFT JOIN purpose_targets pt   ON pt.dimension_value_id = dv.id
      WHERE dv.dimension_id = ?
      GROUP BY dv.id, dv.label, pt.target_amount
-     ORDER BY dv.id`,
+     ORDER BY COALESCE(dv.sort_order, dv.id)`,
     [FUND_ID, dimId]
   );
 }
@@ -172,4 +172,29 @@ export async function syncFundTotal(db: SQLiteDatabase): Promise<number> {
   const total = row?.total ?? 0;
   await db.runAsync('UPDATE funds SET total_amount = ? WHERE id = ?', [total, FUND_ID]);
   return total;
+}
+
+export async function swapDimensionValueOrder(
+  db: SQLiteDatabase,
+  movingId: number,
+  neighbourIndex: number,
+  type: 'account' | 'purpose'
+): Promise<void> {
+  const dimId = type === 'account' ? DIM_ACCOUNTS : DIM_PURPOSE;
+  const rows = await db.getAllAsync<{ id: number }>(
+    'SELECT id FROM dimension_values WHERE dimension_id = ? ORDER BY COALESCE(sort_order, id)',
+    [dimId]
+  );
+  const neighbourId = rows[neighbourIndex]?.id;
+  if (!neighbourId) return;
+
+  const a = await db.getFirstAsync<{ sort_order: number | null }>('SELECT sort_order FROM dimension_values WHERE id = ?', [movingId]);
+  const b = await db.getFirstAsync<{ sort_order: number | null }>('SELECT sort_order FROM dimension_values WHERE id = ?', [neighbourId]);
+  const sortA = a?.sort_order ?? movingId;
+  const sortB = b?.sort_order ?? neighbourId;
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE dimension_values SET sort_order = ? WHERE id = ?', [sortB, movingId]);
+    await db.runAsync('UPDATE dimension_values SET sort_order = ? WHERE id = ?', [sortA, neighbourId]);
+  });
 }

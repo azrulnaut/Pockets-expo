@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS dimension_values (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     dimension_id INTEGER NOT NULL REFERENCES dimensions(id) ON DELETE RESTRICT,
     label        TEXT    NOT NULL,
+    sort_order   INTEGER,
     created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
     UNIQUE (dimension_id, label)
 );

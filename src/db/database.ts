@@ -8,6 +8,11 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
   // Run PRAGMA separately so it takes effect on the connection before DDL
   await db.execAsync('PRAGMA foreign_keys = ON;');
   await db.execAsync(SCHEMA_SQL);
+  // Migration: add sort_order column for existing installs
+  try {
+    await db.execAsync('ALTER TABLE dimension_values ADD COLUMN sort_order INTEGER');
+  } catch (_) { /* column already exists */ }
+  await db.execAsync('UPDATE dimension_values SET sort_order = id WHERE sort_order IS NULL');
 }
 
 // ---------------------------------------------------------------------------

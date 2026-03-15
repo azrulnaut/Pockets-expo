@@ -48,7 +48,8 @@ src/
   store/
     useAppStore.ts              ← Zustand store (AppState + UIState + ModalState slices)
   screens/
-    MainScreen.tsx              ← Single screen, assembles all components
+    MainScreen.tsx              ← Main screen, assembles all components; shown when `activeScreen === 'main'`
+    EditModeScreen.tsx          ← Edit Mode screen (orange header); shown when `activeScreen === 'editMode'`
   components/
     BalanceHeader.tsx           ← Fund name + total (dark header)
     TabBar.tsx                  ← Accounts | Purposes tab switcher (wallet-outline / cube-outline icons)
@@ -56,7 +57,8 @@ src/
     DimensionList.tsx           ← Renders account or purpose list
     DimensionRow.tsx            ← Expandable row with Ionicons gear (settings-outline) + chevron toggle
     SliceSubRow.tsx             ← Indented slice breakdown row
-    Taskbar.tsx                 ← 3 icon buttons (Account, Re-tag, Settings); Account opens animated sub-menu (Deposit/Spend/Transfer)
+    Taskbar.tsx                 ← 4 icon buttons (Home, Transact, Re-tag, Tools); Transact + Tools each open animated sub-menu pills
+    EditModeRow.tsx             ← Row in Edit Mode: side-by-side ▲▼ rounded-square chevrons + orange Edit button
     Toast.tsx                   ← Animated fade notification overlay
     AppModal.tsx                ← Single Modal shell (bottom sheet style)
     modals/
@@ -138,6 +140,9 @@ Single `AppModal` component reads `modal.type` from Zustand and renders the corr
 - **`modal.type` as mode source** — `RebalanceModalContent` reads `modal.type` (not `modal.payload.mode`) to determine rebalance/deposit/spend mode. `modal.payload.mode` was removed.
 - **Re-tag modal** — `PurposeTransferModalContent` is 2-phase: select source/target purposes → account slice grid. `executePurposeTransfer` now takes per-account transfers, not a single drain amount.
 - **MAX button in PurposeGrid** — each row has a MAX button that fills the row with the entire remaining delta and sets the mode to match the sign of the remainder. Disabled (greyed) when `remainder === 0`. `onMaxPress` handler lives in `RebalanceModalContent` and is passed as a prop.
-- **Taskbar sub-menu** — `Taskbar` renders a RN `Modal` (`transparent`) for the Account sub-menu (Deposit/Spend/Transfer). `taskbarHeight` is captured via `onLayout` so the pill positions correctly above the bar. Animation uses `Animated.spring` (open) and `Animated.timing` 100ms (close); `setSubMenuOpen(false)` is called in the animation callback, not immediately.
+- **Taskbar sub-menus** — `Taskbar` has two transparent RN `Modal` sub-menus: Transact (Deposit/Spend/Transfer) and Tools (Edit Mode/Settings). `taskbarHeight` is captured via `onLayout` so pills position correctly above the bar. Animation uses `Animated.spring` (open) and `Animated.timing` 100ms (close); `setSubMenuOpen(false)` is called in the animation callback, not immediately.
+- **Taskbar switches to main before modals** — Deposit, Spend, Transfer (account), and Re-tag all call `setActiveScreen('main')` before `openModal(...)`. This ensures the modal appears over the main screen even if the user triggered it from Edit Mode.
+- **Edit Mode orange theme** — `EditModeScreen` header is `#c2410c`; `TabBar` and `AddBar` read `activeScreen` from the store and switch their accent color to `#ea580c` when `activeScreen === 'editMode'`. `EditModeRow` chevron squares are `#ea580c` (active) / `#fed7aa` (disabled); Edit button is `#fff7ed` bg / `#ea580c` text.
+- **EditModeRow chevrons** — two side-by-side 36×36 rounded squares (`borderRadius: 8`), icon size 22, always white icon color; active bg `#ea580c`, disabled bg `#fed7aa`.
 - **Dimension value ordering** — `getDimensionTotals` uses `ORDER BY dv.id` (creation order), not alphabetical. All lists and pickers reflect insertion order.
 - **Purpose targets** — `purpose_targets` table stores optional target amounts for purposes. `getDimensionTotals` LEFT JOINs this table, so `DimensionValue.targetAmount` is always present (0 = no target). `setTargetAmount(db, dvId, cents)` uses INSERT OR REPLACE for `> 0` and DELETE for `0`. `ON DELETE CASCADE` ensures rows are removed when the purpose is deleted — no manual cleanup needed. The `purpose_targets` table is added via `CREATE TABLE IF NOT EXISTS` so existing installs gain it on next launch without a migration.

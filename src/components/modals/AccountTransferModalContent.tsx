@@ -149,6 +149,7 @@ export function AccountTransferModalContent() {
           }
           onChangeMode={() => {}}
           showModeButtons={false}
+          showMaxButton={false}
           remainder={-totalCents}
           remainderLabel="Total to transfer"
         />

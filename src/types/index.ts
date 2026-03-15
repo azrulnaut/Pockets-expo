@@ -47,6 +47,7 @@ export interface ModalPayload {
   currentTotal?: number;
   mode?: 'deposit' | 'spend' | 'rebalance';
   targetAmount?: number;
+  total?: number;
 }
 
 export interface ModalConfig {

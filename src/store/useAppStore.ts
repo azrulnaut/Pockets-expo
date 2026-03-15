@@ -12,6 +12,7 @@ interface AppState {
 
   // UI state
   activeTab: 'accounts' | 'purposes';
+  activeScreen: 'main' | 'editMode';
   expandedAccounts: Set<number>;
   expandedPurposes: Set<number>;
   sliceCache: Record<string, SliceRow[]>;
@@ -23,6 +24,7 @@ interface AppState {
   // Actions
   loadState: (db: SQLiteDatabase) => Promise<void>;
   setActiveTab: (tab: 'accounts' | 'purposes') => void;
+  setActiveScreen: (screen: 'main' | 'editMode') => void;
   toggleExpand: (db: SQLiteDatabase, type: 'account' | 'purpose', dvId: number) => Promise<void>;
   invalidateSliceCache: () => void;
   openModal: (config: ModalConfig) => void;
@@ -38,6 +40,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   purposes: [],
 
   activeTab: 'accounts',
+  activeScreen: 'main',
   expandedAccounts: new Set(),
   expandedPurposes: new Set(),
   sliceCache: {},
@@ -67,6 +70,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  setActiveScreen: (screen) => set({ activeScreen: screen }),
 
   toggleExpand: async (db, type, dvId) => {
     const { expandedAccounts, expandedPurposes, sliceCache } = get();

@@ -4,7 +4,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useAppStore } from '../../store/useAppStore';
 import { renameDimensionValue, deleteDimensionValue, setTargetAmount } from '../../db/queries';
 import { DIM_ACCOUNTS, DIM_PURPOSE } from '../../constants';
-import { parseDollars } from '../../utils/format';
+import { parseDollars, fmt } from '../../utils/format';
 
 export function EditModalContent() {
   const db = useSQLiteContext();
@@ -16,6 +16,7 @@ export function EditModalContent() {
   const dvId = modal.payload?.dvId ?? 0;
   const currentLabel = modal.payload?.label ?? '';
   const currentTargetAmount = modal.payload?.targetAmount ?? 0;
+  const currentTotal = modal.payload?.total ?? 0;
   const dimId = type === 'account' ? DIM_ACCOUNTS : DIM_PURPOSE;
   const typeName = type === 'account' ? 'Account' : 'Purpose';
 
@@ -41,6 +42,14 @@ export function EditModalContent() {
   };
 
   const handleDelete = () => {
+    if (currentTotal > 0) {
+      Alert.alert(
+        `Cannot Delete ${typeName}`,
+        `"${currentLabel}" has a balance of ${fmt(currentTotal)}. Transfer or Spend the balance before deleting this ${type}.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     Alert.alert(
       `Delete ${typeName}`,
       `Delete "${currentLabel}"?\n\nThis will permanently delete all its slices.`,

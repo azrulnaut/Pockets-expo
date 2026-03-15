@@ -15,8 +15,9 @@ interface Props {
   rows: PurposeRowState[];
   onChangeValue: (purposeId: number, value: string) => void;
   onChangeMode: (purposeId: number, mode: PurposeMode) => void;
-  onMaxPress: (purposeId: number) => void;
+  onMaxPress?: (purposeId: number) => void;
   showModeButtons: boolean;
+  showMaxButton?: boolean;
   remainder: number;
   remainderLabel: string;
 }
@@ -27,6 +28,7 @@ export function PurposeGrid({
   onChangeMode,
   onMaxPress,
   showModeButtons,
+  showMaxButton = true,
   remainder,
   remainderLabel,
 }: Props) {
@@ -48,13 +50,15 @@ export function PurposeGrid({
             <Text style={styles.purposeLabel} numberOfLines={1}>{purpose.label}</Text>
             <Text style={styles.purposeCurrent}>{fmt(purpose.currentInAccount)}</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.maxBtn, isZero && styles.maxBtnDisabled]}
-            onPress={() => onMaxPress(purpose.id)}
-            disabled={isZero}
-          >
-            <Text style={[styles.maxBtnText, isZero && styles.maxBtnTextDisabled]}>MAX</Text>
-          </TouchableOpacity>
+          {showMaxButton && (
+            <TouchableOpacity
+              style={[styles.maxBtn, isZero && styles.maxBtnDisabled]}
+              onPress={() => onMaxPress?.(purpose.id)}
+              disabled={isZero}
+            >
+              <Text style={[styles.maxBtnText, isZero && styles.maxBtnTextDisabled]}>MAX</Text>
+            </TouchableOpacity>
+          )}
           {showModeButtons && (
             <View style={styles.modeBtns}>
               <TouchableOpacity
